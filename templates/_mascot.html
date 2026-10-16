@@ -1,0 +1,46 @@
+{# Reusable chow chow mascot. mood: "happy", "cheer" or "sleepy" #}
+{% macro mascot(mood="happy", size=140) %}
+<svg class="mascot mascot-{{ mood }}" viewBox="0 0 200 200" width="{{ size }}" height="{{ size }}" role="img" aria-label="Chow chow mascot">
+  <!-- Fluffy mane: one big circle plus a ring of smaller ones -->
+  <g class="m-fur">
+    <circle cx="100" cy="108" r="60"/>
+    <circle cx="164" cy="108" r="26"/><circle cx="152" cy="146" r="26"/>
+    <circle cx="120" cy="169" r="26"/><circle cx="80" cy="169" r="26"/>
+    <circle cx="48" cy="146" r="26"/><circle cx="36" cy="108" r="26"/>
+    <circle cx="48" cy="70" r="26"/><circle cx="80" cy="47" r="26"/>
+    <circle cx="120" cy="47" r="26"/><circle cx="152" cy="70" r="26"/>
+  </g>
+  <!-- Ears -->
+  <g class="m-fur-dark">
+    <path d="M48 72 C38 38 62 22 86 38 C74 46 68 58 68 74 Z"/>
+    <path d="M152 72 C162 38 138 22 114 38 C126 46 132 58 132 74 Z"/>
+  </g>
+  <!-- Face, muzzle, nose -->
+  <circle class="m-fur-light" cx="100" cy="112" r="46"/>
+  <ellipse class="m-muzzle" cx="100" cy="128" rx="28" ry="22"/>
+  <ellipse class="m-ink" cx="100" cy="116" rx="9" ry="6.5"/>
+  <ellipse cx="97" cy="114" rx="2.5" ry="1.5" fill="#fff" opacity=".7"/>
+  <ellipse class="m-blush" cx="60" cy="120" rx="7" ry="4.5"/>
+  <ellipse class="m-blush" cx="140" cy="120" rx="7" ry="4.5"/>
+
+  {% if mood == "cheer" %}
+    <path class="m-line" d="M66 100 Q74 90 82 100 M118 100 Q126 90 134 100"/>
+    <path class="m-ink" d="M86 128 Q100 160 114 128 Z"/>
+    <ellipse class="m-tongue" cx="100" cy="140" rx="7" ry="4"/>
+    <path class="m-line" d="M100 122 V128"/>
+    <path d="M22 10 L25 19 L34 22 L25 25 L22 34 L19 25 L10 22 L19 19 Z" fill="#fbbf24"/>
+    <path d="M22 10 L25 19 L34 22 L25 25 L22 34 L19 25 L10 22 L19 19 Z" fill="#fbbf24" transform="translate(150 4) scale(.8)"/>
+  {% elif mood == "sleepy" %}
+    <path class="m-line" d="M66 99 Q74 105 82 99 M118 99 Q126 105 134 99"/>
+    <path class="m-line" d="M100 122 V127 M94 129 Q100 133 106 129"/>
+    <text class="m-zzz" x="166" y="36" font-size="22">z</text>
+    <text class="m-zzz" x="180" y="18" font-size="16">z</text>
+  {% else %}
+    <circle class="m-ink" cx="74" cy="98" r="7"/><circle class="m-ink" cx="126" cy="98" r="7"/>
+    <circle cx="76.5" cy="95.5" r="2.4" fill="#fff"/><circle cx="128.5" cy="95.5" r="2.4" fill="#fff"/>
+    <path class="m-tongue" d="M92 129 Q92 152 100 152 Q108 152 108 129 Z"/>
+    <path d="M100 136 V146" stroke="#35356b" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path class="m-line" d="M100 122 V128 M100 128 Q91 137 84 129 M100 128 Q109 137 116 129"/>
+  {% endif %}
+</svg>
+{% endmacro %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ shared['name'] }}{% endblock %}
+{% block content %}
+{% from "_avatar.html" import avatar %}
+  <a href="{{ url_for('shared.index') }}" class="muted">← Shared habits</a>
+  <header class="page-header">
+    <h1>{{ shared['name'] }}</h1>
+    <p class="muted">{{ shared['category'] }} · {{ shared['frequency']|capitalize }}</p>
+  </header>
+
+  <section class="stats-row">
+    <div class="stat-card purple"><span class="stat-label">Done today</span><span class="stat-value">{{ done_count }}/{{ members|length }}</span><span class="stat-sub">members</span></div>
+    <div class="stat-card orange"><span class="stat-label">Group streak</span><span class="stat-value">🔥 {{ group_current }}</span><span class="stat-sub">everyone did it</span></div>
+    <div class="stat-card teal"><span class="stat-label">Longest group streak</span><span class="stat-value">{{ group_longest }}</span><span class="stat-sub">days</span></div>
+  </section>
+
+  {% if my_habit_id %}
+    <form method="post" action="{{ url_for('tracking.toggle', habit_id=my_habit_id) }}">
+      <input type="hidden" name="date" value="{{ today.isoformat() }}">
+      <input type="hidden" name="next" value="{{ url_for('shared.detail', shared_id=shared['id']) }}">
+      <button type="submit" class="check-btn save-btn">
+        {% if my_done_today %}✓ You're done today (tap to undo){% else %}Mark my part as done{% endif %}
+      </button>
+    </form>
+  {% endif %}
+
+  <h2>Members</h2>
+  <div class="habit-grid">
+    {% for m in members %}
+      <article class="habit-card {{ 'is-done' if m.done_today }}">
+        <div class="habit-top">
+        <span class="person">{{ avatar(m.user_id, m.username, 32) }}<strong>{{ m.username }}{% if m.is_me %} (you){% endif %}</strong></span>
+          <span class="streak">🔥 {{ m.current }}</span>
+        </div>
+        <p class="muted small">
+          {% if m.done_today %}✓ Done today{% else %}Not yet today{% endif %} · Longest streak: {{ m.longest }}
+        </p>
+        <div class="week">
+          {% for d in m.week %}
+            <div class="dot-wrap">
+              <div class="dot {{ 'on' if d.done }}"></div>
+              <span>{{ d.day.strftime('%a')[:2] }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+
+  {% if pending %}
+    <p class="muted small">Invited, not joined yet: {{ pending|join(', ') }}</p>
+  {% endif %}
+  <p class="muted small">Everyone in this group can see each other's progress on this habit. Group streaks restart when someone new joins.</p>
+
+  {% if is_creator and invitable %}
+    <section class="panel">
+      <h2>Invite more friends</h2>
+      <form method="post" action="{{ url_for('shared.invite', shared_id=shared['id']) }}">
+        <div class="opt-row">
+          {% for f in invitable %}
+            <label class="opt">
+              <input type="checkbox" name="invite" value="{{ f['id'] }}">
+              <span class="opt-card">{{ f['username'] }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn-small">Send invitations</button>
+      </form>
+    </section>
+  {% endif %}
+
+  <section class="panel">
+    {% if is_creator %}
+      <form method="post" action="{{ url_for('shared.delete', shared_id=shared['id']) }}"
+            onsubmit="return confirm('Delete this shared habit for everyone? Each person keeps their own history as a personal habit.');">
+        <button type="submit" class="btn-small danger">Delete shared habit</button>
+      </form>
+    {% else %}
+      <form method="post" action="{{ url_for('shared.leave', shared_id=shared['id']) }}"
+            onsubmit="return confirm('Leave this group? Your history stays as a personal habit.');">
+        <button type="submit" class="btn-small danger">Leave group</button>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}

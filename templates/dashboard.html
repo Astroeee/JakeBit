@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+  {% from "_mascot.html" import mascot %}
+
+  <header class="page-header">
+    <p class="muted">{{ today.strftime('%A') }}</p>
+    <h1>{{ today.strftime('%B %d, %Y') }}</h1>
+  </header>
+
+  <section class="panel mascot-card">
+    {{ mascot(mood, 130) }}
+    <div class="bubble">
+      <strong>{{ ui.mascot_name }}</strong>
+      <p>{{ message }}</p>
+    </div>
+  </section>
+
+  <section class="stats-row">
+    <div class="stat-card purple">
+      <span class="stat-label">Today's progress</span>
+      <span class="stat-value">{{ percent }}%</span>
+      <div class="progress"><div class="progress-bar" style="width: {{ percent }}%"></div></div>
+      <span class="stat-sub">{{ done_today }} of {{ cards|length }} habits done</span>
+    </div>
+    <div class="stat-card orange">
+      <span class="stat-label">Best current streak</span>
+      <span class="stat-value">{{ best_streak }}</span>
+      <span class="stat-sub">days in a row</span>
+    </div>
+    <div class="stat-card teal">
+      <span class="stat-label">Total completions</span>
+      <span class="stat-value">{{ total_completions }}</span>
+      <span class="stat-sub">all habits, all time</span>
+    </div>
+  </section>
+
+  <h2>Today's habits</h2>
+  <div class="habit-grid">
+    {% for c in cards %}
+      <article class="habit-card {{ 'is-done' if c.done_today }}">
+        <div class="habit-top">
+          <span class="tag">{{ c.category }}</span>
+                    {% if c.shared_id %}<a class="tag" href="{{ url_for('shared.detail', shared_id=c.shared_id) }}">👥 Shared</a>{% endif %}
+          <span class="streak">🔥 {{ c.current }}</span>
+        </div>
+        <h3>{{ c.name }}</h3>
+        <p class="muted small">Longest streak: {{ c.longest }} · {{ c.total }} total</p>
+        <div class="week">
+          {% for d in c.week %}
+            <div class="dot-wrap">
+              <div class="dot {{ 'on' if d.done }}"></div>
+              <span>{{ d.day.strftime('%a')[:2] }}</span>
+            </div>
+          {% endfor %}
+        </div>
+        <form method="post" action="{{ url_for('tracking.toggle', habit_id=c.id) }}">
+          <input type="hidden" name="date" value="{{ today.isoformat() }}">
+          <input type="hidden" name="next" value="{{ url_for('tracking.dashboard') }}">
+          <button type="submit" class="check-btn">
+            {% if c.done_today %}✓ Done (tap to undo){% else %}Mark as done{% endif %}
+          </button>
+        </form>
+      </article>
+    {% else %}
+      <p class="empty">No active habits yet. <a href="{{ url_for('habits.habits') }}">Add your first habit</a>.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

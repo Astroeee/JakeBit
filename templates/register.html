@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+  <section class="panel auth-card">
+    <h1>Create your account</h1>
+    <form method="post" class="auth-form">
+      <label class="field-label" for="username">Username</label>
+      <input id="username" type="text" name="username" minlength="3" maxlength="20" autocomplete="username" required autofocus>
+      <p class="muted small">3 to 20 characters: letters, numbers, underscores. Friends will find you by this.</p>
+
+      <label class="field-label" for="email">Email</label>
+      <input id="email" type="email" name="email" maxlength="254" autocomplete="email" required>
+
+      <label class="field-label" for="password">Password</label>
+      <input id="password" type="password" name="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+
+      <label class="field-label" for="confirm">Confirm password</label>
+      <input id="confirm" type="password" name="confirm" minlength="8" maxlength="128" autocomplete="new-password" required>
+
+      <button type="submit" class="check-btn">Create account</button>
+    </form>
+    <p class="muted small">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+  </section>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Shared habits{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <h1>Shared habits</h1>
+    <p class="muted">Do a habit together with a friend or a group.</p>
+  </header>
+
+  {% if invites %}
+    <section class="panel">
+      <h2>Invitations</h2>
+      {% for i in invites %}
+        <div class="friend-row">
+          <div>
+            <strong>{{ i['name'] }}</strong><br>
+            <span class="muted small">{{ i['frequency']|capitalize }} · invited by {{ i['invited_by_name'] }}</span>
+          </div>
+          <div class="habit-actions">
+            <form method="post" action="{{ url_for('shared.accept', shared_id=i['id']) }}">
+              <button type="submit" class="btn-small">Join</button>
+            </form>
+            <form method="post" action="{{ url_for('shared.decline', shared_id=i['id']) }}">
+              <button type="submit" class="btn-small danger">Decline</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <section class="panel">
+    <h2>Your shared habits</h2>
+    {% for s in mine %}
+      <div class="friend-row">
+        <div>
+          <strong>{{ s['name'] }}</strong><br>
+          <span class="muted small">{{ s['category'] }} · {{ s['frequency']|capitalize }} · {{ s['member_count'] }} {{ 'person' if s['member_count'] == 1 else 'people' }}</span>
+        </div>
+        <a class="btn-small" href="{{ url_for('shared.detail', shared_id=s['id']) }}">Open</a>
+      </div>
+    {% else %}
+      <p class="muted">Nothing shared yet. Start one below.</p>
+    {% endfor %}
+  </section>
+
+  <section class="panel">
+    <h2>Start a shared habit</h2>
+    <form method="post" action="{{ url_for('shared.create') }}">
+      <div class="row-fields">
+        <input type="text" name="name" placeholder="e.g. Morning run" maxlength="100" required>
+        <select name="category">
+          {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        </select>
+        <select name="frequency">
+          {% for f in frequencies %}<option value="{{ f }}">{{ f|capitalize }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <p class="field-label">Invite friends (up to {{ max_invites }})</p>
+      {% if friends %}
+        <div class="opt-row">
+          {% for f in friends %}
+            <label class="opt">
+              <input type="checkbox" name="invite" value="{{ f['id'] }}">
+              <span class="opt-card">{{ f['username'] }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted small">You have no friends yet. You can still create it and invite people later, once you've added friends.</p>
+      {% endif %}
+
+      <button type="submit" class="check-btn save-btn">Create shared habit</button>
+    </form>
+  </section>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+{% from "_mascot.html" import mascot %}
+{% from "_avatar.html" import avatar %}
+  <header class="page-header">
+    <h1>Settings</h1>
+    <p class="muted">Changes preview instantly. Press Save to keep them.</p>
+  </header>
+
+  <form method="post">
+        <section class="panel set-section">
+      <h2>Color theme</h2>
+      <p class="muted small">Light</p>
+      <div class="opt-row">
+        {% for value, label, color in options.theme if value not in dark_themes %}
+          <label class="opt">
+            <input type="radio" name="theme" value="{{ value }}" data-mode="light" {{ 'checked' if ui.theme == value }}>
+            <span class="opt-card"><i class="opt-swatch" style="background: {{ color }}"></i>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <p class="muted small">Dark</p>
+      <div class="opt-row">
+        {% for value, label, color in options.theme if value in dark_themes %}
+          <label class="opt">
+            <input type="radio" name="theme" value="{{ value }}" data-mode="dark" {{ 'checked' if ui.theme == value }}>
+            <span class="opt-card"><i class="opt-swatch" style="background: {{ color }}"></i>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel set-section">
+      <h2>Background</h2>
+      <div class="opt-row">
+        {% for value, label, color in options.bg %}
+          <label class="opt">
+            <input type="radio" name="bg" value="{{ value }}" {{ 'checked' if ui.bg == value }}>
+            <span class="opt-card">{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel set-section">
+      <h2>Card style</h2>
+      <div class="opt-row">
+        {% for value, label, color in options.card %}
+          <label class="opt">
+            <input type="radio" name="card" value="{{ value }}" {{ 'checked' if ui.card == value }}>
+            <span class="opt-card">{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel set-section">
+      <h2>Your mascot</h2>
+      <div class="mascot-set">
+        {{ mascot("happy", 120) }}
+        <div>
+          <label class="field-label" for="mascot_name">Name</label>
+          <input id="mascot_name" type="text" name="mascot_name" value="{{ ui.mascot_name }}" maxlength="16" required>
+          <p class="muted small">Fur color</p>
+          <div class="opt-row">
+            {% for value, label, color in options.fur %}
+              <label class="opt">
+                <input type="radio" name="fur" value="{{ value }}" {{ 'checked' if ui.fur == value }}>
+                <span class="opt-card"><i class="opt-swatch" style="background: {{ color }}"></i>{{ label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+        <section class="panel set-section">
+      <h2>Privacy</h2>
+      <p class="muted small">Only people you've accepted as friends can see anything. Never the public.</p>
+      <label class="check-row">
+        <input type="checkbox" name="show_scores" {{ 'checked' if g.user['show_scores'] }}>
+        Let friends see my scores (weekly rate, streaks, leaderboard)
+      </label>
+      <label class="check-row">
+        <input type="checkbox" name="show_habit_names" {{ 'checked' if g.user['show_habit_names'] }}>
+        Let friends see the names of my habits
+      </label>
+    </section>
+    
+    <button type="submit" class="check-btn save-btn">Save settings</button>
+  </form>
+
+    <section class="panel set-section">
+    <h2>Account</h2>
+    <p class="muted">Signed in as <strong>{{ g.user['username'] }}</strong> ({{ g.user['email'] }})</p>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <button type="submit" class="btn-small danger">Log out</button>
+    </form>
+      <section class="panel set-section">
+    <h2>Profile picture</h2>
+    <div class="avatar-set">
+      {{ avatar(g.user['id'], g.user['username'], 96) }}
+      <div>
+        <form method="post" action="{{ url_for('avatars.upload') }}" enctype="multipart/form-data" class="avatar-form">
+          <input type="file" name="avatar" accept="image/png,image/jpeg,image/webp" required>
+          <button type="submit" class="btn-small">Upload</button>
+        </form>
+        <p class="muted small">JPG, PNG or WebP, up to 5 MB. It's cropped to a square. Only you, your friends and your shared-habit groups can see it.</p>
+        {% if g.user['avatar'] %}
+          <form method="post" action="{{ url_for('avatars.remove') }}">
+            <button type="submit" class="btn-small danger">Remove picture</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  </section>
+{% endblock %}

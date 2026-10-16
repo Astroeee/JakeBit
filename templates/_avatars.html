@@ -1,0 +1,5 @@
+{# Shows a person's profile picture, or a colored initial if they have none or you can't see it #}
+{% macro avatar(user_id, username, size=40) %}
+<img class="avatar" src="{{ url_for('avatars.avatar', user_id=user_id) }}"
+     width="{{ size }}" height="{{ size }}" alt="Profile picture of {{ username }}" loading="lazy">
+{% endmacro %}

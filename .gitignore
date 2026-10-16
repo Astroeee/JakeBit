@@ -1,0 +1,24 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Secrets: never commit these
+.env
+
+# Database (each person creates their own with: flask --app app init-db)
+database/*.db
+
+# Profile pictures uploaded by users
+uploads/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editors and operating system
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

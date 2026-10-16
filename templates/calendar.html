@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Calendar{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <h1>Calendar</h1>
+    <p class="muted">Click any past day to log a habit you already did. Click again to undo.</p>
+  </header>
+
+  {% if not habits %}
+    <p class="empty">No active habits yet. <a href="{{ url_for('habits.habits') }}">Add one first</a>.</p>
+  {% else %}
+    <div class="pill-row">
+      {% for h in habits %}
+        <a class="pill {{ 'active' if h.id == selected.id }}"
+           href="{{ url_for('tracking.calendar_view', habit=h.id, month=month_key) }}">{{ h.name }}</a>
+      {% endfor %}
+    </div>
+
+    <section class="cal-card">
+      <div class="cal-header">
+        <a class="cal-nav" href="{{ url_for('tracking.calendar_view', habit=selected.id, month=prev_key) }}">‹</a>
+        <h2>{{ first.strftime('%B %Y') }}</h2>
+        {% if show_next %}
+          <a class="cal-nav" href="{{ url_for('tracking.calendar_view', habit=selected.id, month=next_key) }}">›</a>
+        {% else %}
+          <span class="cal-nav disabled">›</span>
+        {% endif %}
+      </div>
+
+      <div class="cal-grid cal-weekdays">
+        {% for n in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}<div>{{ n }}</div>{% endfor %}
+      </div>
+
+      <div class="cal-grid">
+        {% for row in rows %}{% for cell in row %}
+          {% if cell.status == 'outside' %}
+            <div class="cell outside"></div>
+          {% elif cell.status == 'future' %}
+            <div class="cell future">{{ cell.date.day }}</div>
+          {% else %}
+            <form method="post" action="{{ url_for('tracking.toggle', habit_id=selected.id) }}">
+              <input type="hidden" name="date" value="{{ cell.date.isoformat() }}">
+              <input type="hidden" name="next" value="{{ next_url }}">
+              <button type="submit" class="cell {{ cell.status }}{{ ' today' if cell.date == today }}">{{ cell.date.day }}</button>
+            </form>
+          {% endif %}
+        {% endfor %}{% endfor %}
+      </div>
+
+      <div class="legend">
+        <span><i class="swatch done"></i> Completed</span>
+        <span><i class="swatch missed"></i> Missed</span>
+        <span><i class="swatch none"></i> No tracking</span>
+      </div>
+    </section>
+
+    <section class="stats-row">
+      <div class="stat-card orange"><span class="stat-label">Current streak</span><span class="stat-value">{{ current }}</span></div>
+      <div class="stat-card purple"><span class="stat-label">Longest streak</span><span class="stat-value">{{ longest }}</span></div>
+      <div class="stat-card teal"><span class="stat-label">Done this month</span><span class="stat-value">{{ month_done }}</span></div>
+    </section>
+  {% endif %}
+{% endblock %}

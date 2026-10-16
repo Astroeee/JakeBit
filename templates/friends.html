@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Friends{% endblock %}
+{% block content %}
+  {% from "_avatar.html" import avatar %}
+
+  <header class="page-header">
+    <h1>Friends</h1>
+    <p class="muted">Compete and cheer each other on.</p>
+  </header>
+
+  <section class="panel">
+    <h2>Leaderboard <span class="muted small">· last 7 days</span></h2>
+    {% if board|length == 1 %}
+      <p class="muted">Add a friend below to start a leaderboard.</p>
+    {% endif %}
+    <ol class="board">
+      {% for e in board %}
+        <li class="board-row {{ 'is-me' if e.is_me }}">
+          <span class="rank">
+            {% if e.rank == 1 %}🥇{% elif e.rank == 2 %}🥈{% elif e.rank == 3 %}🥉{% elif e.rank %}{{ e.rank }}{% else %}–{% endif %}
+          </span>
+          {{ avatar(e.user_id, e.username, 36) }}
+          <span class="board-name">
+            {% if e.is_me %}{{ e.username }} (you){% else %}<a href="{{ url_for('friends.profile', username=e.username) }}">{{ e.username }}</a>{% endif %}
+          </span>
+          {% if e.visible %}
+            <span class="board-stat"><strong>{{ e.rate }}%</strong> done</span>
+            <span class="board-stat">🔥 {{ e.streak }}</span>
+          {% else %}
+            <span class="muted small">Scores are private</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="panel">
+    <h2>Add a friend</h2>
+    <form method="post" action="{{ url_for('friends.add_friend') }}" class="inline-form">
+      <input type="text" name="username" placeholder="Their username" maxlength="20" required>
+      <button type="submit" class="btn-small">Send request</button>
+    </form>
+  </section>
+
+  {% if incoming %}
+    <section class="panel">
+      <h2>Requests for you</h2>
+      {% for r in incoming %}
+        <div class="friend-row">
+          <strong>{{ r['username'] }}</strong>
+          <div class="habit-actions">
+            <form method="post" action="{{ url_for('friends.accept', friendship_id=r['id']) }}">
+              <button type="submit" class="btn-small">Accept</button>
+            </form>
+            <form method="post" action="{{ url_for('friends.remove', friendship_id=r['id']) }}">
+              <button type="submit" class="btn-small danger">Decline</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  {% if sent %}
+    <section class="panel">
+      <h2>Waiting for a reply</h2>
+      {% for r in sent %}
+        <div class="friend-row">
+          <span>{{ r['username'] }}</span>
+          <form method="post" action="{{ url_for('friends.remove', friendship_id=r['id']) }}">
+            <button type="submit" class="btn-small danger">Cancel</button>
+          </form>
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <section class="panel">
+    <h2>Your friends ({{ friends|length }})</h2>
+    {% for f in friends %}
+      <div class="friend-row">
+        <div class="person">{{ avatar(f['id'], f['username'], 36) }}<strong>{{ f['username'] }}</strong></div>
+        <div class="habit-actions">
+          <a class="btn-small" href="{{ url_for('friends.profile', username=f['username']) }}">View</a>
+          <form method="post" action="{{ url_for('friends.remove', friendship_id=f['friendship_id']) }}"
+                onsubmit="return confirm('Remove this friend?');">
+            <button type="submit" class="btn-small danger">Remove</button>
+          </form>
+        </div>
+      </div>
+    {% else %}
+      <p class="muted">No friends yet.</p>
+    {% endfor %}
+  </section>
+{% endblock %}

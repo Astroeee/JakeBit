@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ friend['username'] }}{% endblock %}
+{% block content %}
+  {% from "_avatar.html" import avatar %}
+  <a href="{{ url_for('friends.friends') }}" class="muted">← Back to friends</a>
+  <header class="page-header person-header">
+    {{ avatar(friend['id'], friend['username'], 72) }}
+    <h1>{{ friend['username'] }}</h1>
+  </header>
+
+  {% if scores %}
+    <section class="stats-row">
+      <div class="stat-card purple"><span class="stat-label">Last 7 days</span><span class="stat-value">{{ scores.rate }}%</span><span class="stat-sub">{{ scores.hits }} check-ins</span></div>
+      <div class="stat-card orange"><span class="stat-label">Best current streak</span><span class="stat-value">{{ scores.streak }}</span><span class="stat-sub">days in a row</span></div>
+      <div class="stat-card teal"><span class="stat-label">Active habits</span><span class="stat-value">{{ scores.habit_count }}</span></div>
+    </section>
+  {% else %}
+    <p class="empty">{{ friend['username'] }} keeps their scores private.</p>
+  {% endif %}
+
+  <h2>Habits</h2>
+  {% if friend['show_habit_names'] %}
+    <div class="habit-grid">
+      {% for h in habits %}
+        <article class="habit-card">
+          <div class="habit-top">
+            <span class="tag">{{ h.category }}</span>
+            {% if friend['show_scores'] %}<span class="streak">🔥 {{ h.current }}</span>{% endif %}
+          </div>
+          <h3>{{ h.name }}</h3>
+          {% if friend['show_scores'] %}
+            <p class="muted small">Longest streak: {{ h.longest }}</p>
+            <div class="week">
+              {% for d in h.week %}
+                <div class="dot-wrap">
+                  <div class="dot {{ 'on' if d.done }}"></div>
+                  <span>{{ d.day.strftime('%a')[:2] }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </article>
+      {% else %}
+        <p class="empty">No active habits.</p>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty">{{ friend['username'] }} doesn't share their habit names.</p>
+  {% endif %}
+{% endblock %}
