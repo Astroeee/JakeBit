@@ -482,3 +482,123 @@ def test_pictures_are_only_visible_to_friends_and_yourself(app, make_user):
 
 def test_pictures_require_login(app):
     assert app.test_client().get("/avatar/1").status_code == 302
+
+def test_production_refuses_the_development_secret_key(tmp_path, monkeypatch):
+    from app import create_app
+    monkeypatch.setenv("PRODUCTION", "1")
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    with pytest.raises(RuntimeError):
+        create_app({"DATABASE": str(tmp_path / "t.db")})
+
+# ------------------------------------------ rate limiting, badges, group management
+def insert_users(app, count):
+    """Create users straight in the database (registering this many would hit the sign-up limit)."""
+    with app.app_context():
+        conn = database.get_db()
+        for i in range(count):
+            conn.execute("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+                         (f"user{i:02d}", f"user{i:02d}@example.com", "x"))
+        conn.commit()
+
+
+def test_login_locks_after_repeated_failures_then_unlocks(app, monkeypatch):
+    import ratelimit
+    register(app.test_client(), "alice")
+    client = app.test_client()
+    for _ in range(5):
+        assert login(client, "alice", "wrong-pass-1").status_code == 200
+    blocked = login(client, "alice", PASSWORD)           # even the CORRECT password is refused now
+    assert blocked.status_code == 429 and b"Too many" in blocked.data
+    later = ratelimit.now() + 16 * 60                    # pretend 16 minutes have passed
+    monkeypatch.setattr(ratelimit, "now", lambda: later)
+    assert login(client, "alice", PASSWORD).status_code == 302
+
+
+def test_a_successful_login_resets_the_failure_count(app):
+    register(app.test_client(), "alice")
+    client = app.test_client()
+    for _ in range(4):
+        login(client, "alice", "wrong-pass-1")
+    assert login(client, "alice", PASSWORD).status_code == 302
+    client.post("/logout")
+    for _ in range(4):
+        login(client, "alice", "wrong-pass-1")
+    assert login(client, "alice", PASSWORD).status_code == 302   # the counter started over
+
+
+def test_signups_are_limited_per_network(app):
+    client = app.test_client()
+    for i in range(10):
+        assert register(client, f"user{i:02d}").status_code == 302
+    assert register(client, "user99").status_code == 429
+
+
+def test_friend_requests_are_limited_per_hour(app, make_user):
+    alice = make_user("alice")
+    insert_users(app, 21)
+    for i in range(20):
+        alice.post("/friends/add", data={"username": f"user{i:02d}"})
+    response = alice.post("/friends/add", data={"username": "user20"}, follow_redirects=True)
+    assert b"too quickly" in response.data
+    assert query(app, "SELECT COUNT(*) AS n FROM friendships")[0]["n"] == 20
+
+
+def test_client_ip_uses_x_real_ip_only_behind_the_proxy(app):
+    import ratelimit
+    with app.test_request_context("/", headers={"X-Real-IP": "9.9.9.9"}, environ_base={"REMOTE_ADDR": "10.0.0.1"}):
+        assert ratelimit.client_ip() == "10.0.0.1"       # not trusted by default
+        app.config["TRUST_X_REAL_IP"] = True
+        assert ratelimit.client_ip() == "9.9.9.9"
+
+
+def test_migrations_are_safe_to_run_repeatedly(app):
+    with app.app_context():
+        database.run_migrations()
+        assert database.run_migrations() == []
+
+
+def test_nav_badges_count_pending_requests_and_invitations(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    assert b'class="badge"' not in bob.get("/").data
+    alice.post("/friends/add", data={"username": "bob"})
+    assert b'class="badge"' in bob.get("/").data                  # friend request waiting
+    fid = query(app, "SELECT id FROM friendships")[0]["id"]
+    bob.post(f"/friends/{fid}/accept")
+    assert b'class="badge"' not in bob.get("/").data              # answered, so the badge is gone
+    alice.post("/shared/create", data={"name": "Morning run", "category": "Fitness", "frequency": "daily",
+                                       "invite": [str(user_id(app, "bob"))]})
+    assert b'class="badge"' in bob.get("/").data                  # invitation waiting
+
+
+def test_creator_can_remove_a_member_and_they_keep_their_history(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    sid = make_group(app, alice, bob)
+    bob.post(f"/shared/{sid}/accept")
+    bob_id = user_id(app, "bob")
+    assert alice.post(f"/shared/{sid}/members/{bob_id}/remove").status_code == 302
+    copy = query(app, "SELECT shared_id FROM habits WHERE user_id = ?", (bob_id,))
+    assert len(copy) == 1 and copy[0]["shared_id"] is None
+    assert bob.get(f"/shared/{sid}").status_code == 404
+
+
+def test_creator_can_cancel_a_pending_invitation(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    sid = make_group(app, alice, bob)                              # bob is invited but hasn't joined
+    bob_id = user_id(app, "bob")
+    alice.post(f"/shared/{sid}/members/{bob_id}/remove")
+    assert query(app, "SELECT COUNT(*) AS n FROM shared_members WHERE user_id = ?", (bob_id,))[0]["n"] == 0
+    assert bob.post(f"/shared/{sid}/accept").status_code == 404    # the invitation is gone
+
+
+def test_only_the_creator_can_remove_people_and_not_themselves(app, make_user):
+    alice, bob, carol = make_user("alice"), make_user("bob"), make_user("carol")
+    befriend(app, alice, bob, "bob")
+    befriend(app, alice, carol, "carol")
+    alice.post("/shared/create", data={"name": "Morning run", "category": "Fitness", "frequency": "daily",
+                                       "invite": [str(user_id(app, "bob")), str(user_id(app, "carol"))]})
+    sid = query(app, "SELECT id FROM shared_habits")[0]["id"]
+    bob.post(f"/shared/{sid}/accept")
+    carol.post(f"/shared/{sid}/accept")
+    assert bob.post(f"/shared/{sid}/members/{user_id(app, 'carol')}/remove").status_code == 403
+    alice.post(f"/shared/{sid}/members/{user_id(app, 'alice')}/remove")
+    assert len(query(app, "SELECT user_id FROM shared_members WHERE shared_id = ?", (sid,))) == 3

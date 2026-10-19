@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, url_for
+from flask import Flask, flash, g, redirect, url_for
 from flask_wtf.csrf import CSRFProtect
 import db
 
@@ -22,10 +22,17 @@ def create_app(test_config=None):
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     # When we deploy over HTTPS, set PRODUCTION=1 so the cookie only travels over HTTPS
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("PRODUCTION") == "1"
+    # In production we sit behind PythonAnywhere's load balancer, which puts the real
+    # visitor address in the X-Real-IP header (used by rate limiting)
+    app.config["TRUST_X_REAL_IP"] = os.environ.get("PRODUCTION") == "1"
 
     # Tests pass their own settings (temporary database, etc.), which replace the ones above
     if test_config:
         app.config.update(test_config)
+
+    # In production, refuse to start with the built-in development key
+    if os.environ.get("PRODUCTION") == "1" and app.config["SECRET_KEY"] == "dev-only-change-me":
+        raise RuntimeError("Set a real SECRET_KEY in your .env file before running in production.")
 
     os.makedirs(os.path.dirname(app.config["DATABASE"]), exist_ok=True)
 
@@ -53,6 +60,24 @@ def create_app(test_config=None):
     def inject_ui():
         # Makes `ui` (theme, background, mascot...) available in every template
         return {"ui": get_ui_settings()}
+
+    @app.context_processor
+    def inject_notifications():
+        """How many friend requests and shared-habit invitations are waiting for the
+        logged-in user. The navigation shows these as little red badges."""
+        user = getattr(g, "user", None)
+        if user is None:
+            return {"notify": {"friends": 0, "shared": 0}}
+        conn = db.get_db()
+        friends = conn.execute(
+            "SELECT COUNT(*) FROM friendships WHERE addressee_id = ? AND status = 'pending'",
+            (user["id"],),
+        ).fetchone()[0]
+        shared = conn.execute(
+            "SELECT COUNT(*) FROM shared_members WHERE user_id = ? AND status = 'invited'",
+            (user["id"],),
+        ).fetchone()[0]
+        return {"notify": {"friends": friends, "shared": shared}}
 
     @app.errorhandler(413)
     def file_too_large(error):

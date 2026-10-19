@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, g
 from auth import login_required, USERNAME_RE
 from db import get_db
+import ratelimit
 from scores import user_scores
 from tracking import compute_streaks, get_done_dates
 
@@ -79,6 +80,14 @@ def friends():
 def add_friend():
     db = get_db()
     me = g.user["id"]
+
+    # No more than 20 friend requests per hour per person
+    scope = f"friend-request:{me}"
+    if ratelimit.too_many(db, scope, 20, 60 * 60):
+        flash("You're sending requests too quickly. Please try again later.")
+        return redirect(url_for("friends.friends"))
+    ratelimit.record(db, scope)
+
     username = request.form.get("username", "").strip()
 
     target = None

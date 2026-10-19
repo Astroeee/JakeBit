@@ -191,7 +191,7 @@ def detail(shared_id):
     my_habit_id, my_done_today = None, False
     for r in rows:
         if r["status"] != "joined":
-            pending.append(r["username"])
+            pending.append({"user_id": r["user_id"], "username": r["username"]})
             continue
 
         # This member's personal copy of the habit
@@ -297,3 +297,30 @@ def delete(shared_id):
     db.commit()
     flash("Shared habit deleted. Everyone keeps their own history as a personal habit.")
     return redirect(url_for("shared.index"))
+
+@bp.route("/shared/<int:shared_id>/members/<int:member_id>/remove", methods=("POST",))
+@login_required
+def remove_member(shared_id, member_id):
+    """The creator can remove a member, or cancel an invitation that hasn't been answered."""
+    db = get_db()
+    me = g.user["id"]
+    shared = get_shared_or_404(db, shared_id, me)
+    if shared["creator_id"] != me:
+        abort(403)
+    if member_id == me:
+        flash("You can't remove yourself. Delete the shared habit instead.")
+        return redirect(url_for("shared.detail", shared_id=shared_id))
+
+    member = db.execute(
+        "SELECT status FROM shared_members WHERE shared_id = ? AND user_id = ?",
+        (shared_id, member_id),
+    ).fetchone()
+    if member is None:
+        abort(404)
+
+    # Same rule as leaving: their history stays as a normal personal habit
+    db.execute("UPDATE habits SET shared_id = NULL WHERE shared_id = ? AND user_id = ?", (shared_id, member_id))
+    db.execute("DELETE FROM shared_members WHERE shared_id = ? AND user_id = ?", (shared_id, member_id))
+    db.commit()
+    flash("Invitation cancelled." if member["status"] == "invited" else "Member removed.")
+    return redirect(url_for("shared.detail", shared_id=shared_id))

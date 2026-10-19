@@ -3,12 +3,18 @@ import re
 import sqlite3
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g
 from werkzeug.security import generate_password_hash, check_password_hash
+import ratelimit
 from db import get_db
 
 bp = Blueprint("auth", __name__)
 
 USERNAME_RE = re.compile(r"[A-Za-z0-9_]{3,20}")
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+# Rate limits are (how many, per how many seconds)
+LOGIN_FAILURES_PER_ACCOUNT = (5, 15 * 60)
+LOGIN_FAILURES_PER_IP = (20, 15 * 60)
+SIGNUPS_PER_IP = (10, 60 * 60)
 
 
 @bp.before_app_request
@@ -51,6 +57,15 @@ def register():
         return redirect(url_for("tracking.dashboard"))
 
     if request.method == "POST":
+        db = get_db()
+
+        # Slow down bots that create accounts in bulk. Every attempt counts, valid or not.
+        ip_scope = f"register:ip:{ratelimit.client_ip()}"
+        if ratelimit.too_many(db, ip_scope, *SIGNUPS_PER_IP):
+            flash("Too many sign-ups from this network. Please try again later.")
+            return render_template("register.html"), 429
+        ratelimit.record(db, ip_scope)
+
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
@@ -70,7 +85,6 @@ def register():
             error = "Passwords don't match."
 
         if error is None:
-            db = get_db()
             try:
                 # We store a salted hash, NEVER the password itself
                 db.execute(
@@ -96,10 +110,21 @@ def login():
         return redirect(url_for("tracking.dashboard"))
 
     if request.method == "POST":
+        db = get_db()
         identifier = request.form.get("username", "").strip()
         password = request.form.get("password", "")
 
-        user = get_db().execute(
+        account_scope = f"login:account:{identifier.lower()[:100]}"
+        ip_scope = f"login:ip:{ratelimit.client_ip()}"
+
+        # Too many recent FAILURES for this account or from this network? Refuse, even if the
+        # password is right, otherwise an attacker could keep guessing until they hit it.
+        if (ratelimit.too_many(db, account_scope, *LOGIN_FAILURES_PER_ACCOUNT)
+                or ratelimit.too_many(db, ip_scope, *LOGIN_FAILURES_PER_IP)):
+            flash("Too many failed attempts. Please wait 15 minutes and try again.")
+            return render_template("login.html"), 429
+
+        user = db.execute(
             "SELECT id, password_hash FROM users WHERE username = ? OR email = ?",
             (identifier, identifier.lower()),
         ).fetchone()
@@ -107,8 +132,11 @@ def login():
         # One vague message for both "no such user" and "wrong password",
         # so attackers can't use this form to discover which usernames exist
         if user is None or not check_password_hash(user["password_hash"], password):
+            ratelimit.record(db, account_scope)
+            ratelimit.record(db, ip_scope)
             flash("Incorrect username or password.")
         else:
+            ratelimit.clear(db, account_scope)  # a correct login resets that account's counter
             session.clear()  # start a fresh session (prevents session fixation)
             session["user_id"] = user["id"]
             session.permanent = bool(request.form.get("remember"))  # stay logged in 30 days if ticked

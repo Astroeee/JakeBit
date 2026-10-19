@@ -19,8 +19,8 @@
           <a href="{{ url_for('habits.habits') }}" class="{{ 'active' if request.endpoint == 'habits.habits' }}">Habits</a>
           <a href="{{ url_for('tracking.calendar_view') }}" class="{{ 'active' if request.endpoint == 'tracking.calendar_view' }}">Calendar</a>
           <a href="{{ url_for('stats.statistics') }}" class="{{ 'active' if request.endpoint == 'stats.statistics' }}">Stats</a>
-          <a href="{{ url_for('friends.friends') }}" class="{{ 'active' if request.endpoint in ('friends.friends', 'friends.profile') }}">Friends</a>
-          <a href="{{ url_for('shared.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('shared.') }}">Shared</a>
+          <a href="{{ url_for('friends.friends') }}" class="{{ 'active' if request.endpoint in ('friends.friends', 'friends.profile') }}">Friends{% if notify.friends %}<span class="badge">{{ notify.friends }}</span>{% endif %}</a>
+          <a href="{{ url_for('shared.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('shared.') }}">Shared{% if notify.shared %}<span class="badge">{{ notify.shared }}</span>{% endif %}</a>
           <a href="{{ url_for('settings.settings') }}" class="{{ 'active' if request.endpoint == 'settings.settings' }}">Settings</a>
         {% else %}
           <a href="{{ url_for('auth.login') }}" class="{{ 'active' if request.endpoint == 'auth.login' }}">Log in</a>

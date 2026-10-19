@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ shared['name'] }}{% endblock %}
 {% block content %}
-{% from "_avatar.html" import avatar %}
+  {% from "_avatar.html" import avatar %}
   <a href="{{ url_for('shared.index') }}" class="muted">← Shared habits</a>
   <header class="page-header">
     <h1>{{ shared['name'] }}</h1>
@@ -29,7 +29,7 @@
     {% for m in members %}
       <article class="habit-card {{ 'is-done' if m.done_today }}">
         <div class="habit-top">
-        <span class="person">{{ avatar(m.user_id, m.username, 32) }}<strong>{{ m.username }}{% if m.is_me %} (you){% endif %}</strong></span>
+          <span class="person">{{ avatar(m.user_id, m.username, 32) }}<strong>{{ m.username }}{% if m.is_me %} (you){% endif %}</strong></span>
           <span class="streak">🔥 {{ m.current }}</span>
         </div>
         <p class="muted small">
@@ -43,13 +43,32 @@
             </div>
           {% endfor %}
         </div>
+        {% if is_creator and not m.is_me %}
+          <form method="post" action="{{ url_for('shared.remove_member', shared_id=shared['id'], member_id=m.user_id) }}"
+                onsubmit="return confirm('Remove this person from the group? Their history stays as a personal habit.');">
+            <button type="submit" class="btn-small danger">Remove from group</button>
+          </form>
+        {% endif %}
       </article>
     {% endfor %}
   </div>
 
   {% if pending %}
-    <p class="muted small">Invited, not joined yet: {{ pending|join(', ') }}</p>
+    <section class="panel">
+      <h2>Invited, not joined yet</h2>
+      {% for p in pending %}
+        <div class="friend-row">
+          <span>{{ p.username }}</span>
+          {% if is_creator %}
+            <form method="post" action="{{ url_for('shared.remove_member', shared_id=shared['id'], member_id=p.user_id) }}">
+              <button type="submit" class="btn-small danger">Cancel invitation</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </section>
   {% endif %}
+
   <p class="muted small">Everyone in this group can see each other's progress on this habit. Group streaks restart when someone new joins.</p>
 
   {% if is_creator and invitable %}
