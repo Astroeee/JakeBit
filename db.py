@@ -41,7 +41,13 @@ def run_migrations():
     for filename in sorted(os.listdir(folder)):
         if filename.endswith(".sql") and filename not in done:
             with open(os.path.join(folder, filename), encoding="utf8") as f:
-                conn.executescript(f.read())
+                script = f.read()
+            try:
+                conn.executescript(script)
+            except sqlite3.OperationalError as error:
+                # A database built from the newest schema.sql already has the column
+                if "duplicate column name" not in str(error):
+                    raise
             conn.execute("INSERT INTO schema_migrations (name) VALUES (?)", (filename,))
             conn.commit()
             applied.append(filename)

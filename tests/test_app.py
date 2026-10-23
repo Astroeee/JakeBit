@@ -602,3 +602,67 @@ def test_only_the_creator_can_remove_people_and_not_themselves(app, make_user):
     assert bob.post(f"/shared/{sid}/members/{user_id(app, 'carol')}/remove").status_code == 403
     alice.post(f"/shared/{sid}/members/{user_id(app, 'alice')}/remove")
     assert len(query(app, "SELECT user_id FROM shared_members WHERE shared_id = ?", (sid,))) == 3
+
+# ------------------------------------------------------------------- weekly habits
+WED = date(2026, 10, 14)   # a Wednesday; weeks run Monday to Sunday
+
+
+@pytest.mark.parametrize("target, done, expected", [
+    (3, {date(2026, 10, 12), date(2026, 10, 13), date(2026, 10, 14)}, (1, 1)),     # this week's goal already met
+    (3, {date(2026, 10, 5), date(2026, 10, 6), date(2026, 10, 7), date(2026, 10, 12)}, (1, 1)),  # this week in progress
+    (3, {date(2026, 9, 28), date(2026, 9, 29), date(2026, 9, 30), date(2026, 10, 5), date(2026, 10, 6),
+         date(2026, 10, 12), date(2026, 10, 13), date(2026, 10, 14)}, (1, 1)),     # a missed goal breaks the run
+    (2, {date(2026, 9, 28), date(2026, 9, 29), date(2026, 10, 5), date(2026, 10, 6),
+         date(2026, 10, 12), date(2026, 10, 13)}, (3, 3)),                          # three weeks in a row
+    (1, {date(2026, 10, 6)}, (1, 1)),                                               # once a week, done last week
+    (1, {date(2026, 9, 29), date(2026, 10, 13)}, (1, 1)),                           # skipped a whole week
+    (2, {date(2026, 10, 13)}, (0, 0)),                                              # 1 of 2: nothing met yet
+])
+def test_weekly_streaks(target, done, expected):
+    assert compute_streaks("weekly", done, WED, target) == expected
+
+
+def test_weekly_rates_count_only_complete_weeks():
+    from tracking import period_counts
+    done = {date(2026, 9, 28), date(2026, 9, 29), date(2026, 9, 30), date(2026, 10, 5), date(2026, 10, 6),
+            date(2026, 10, 12), date(2026, 10, 13), date(2026, 10, 14), date(2026, 10, 15)}
+    assert period_counts("weekly", 3, done, date(2026, 9, 28), date(2026, 10, 18)) == (8, 9)
+    assert period_counts("weekly", 3, done, date(2026, 9, 30), date(2026, 10, 18)) == (5, 6)   # partial first week skipped
+    assert period_counts("weekly", 3, done, date(2026, 9, 28), date(2026, 10, 14)) == (5, 6)   # unfinished week not counted
+
+
+def add_weekly(client, name="Gym", target=3):
+    return client.post("/habits", data={"name": name, "category": "Fitness", "frequency": "weekly",
+                                        "weekly_target": str(target)}, follow_redirects=True)
+
+
+def test_weekly_habit_stores_its_goal_and_shows_progress(app, make_user):
+    alice = make_user("alice")
+    add_weekly(alice)
+    assert query(app, "SELECT weekly_target FROM habits")[0]["weekly_target"] == 3
+    assert "3× per week".encode() in alice.get("/habits").data
+    complete(alice, habit_id(app, "Gym"))
+    assert b"This week: 1 of 3" in alice.get("/").data
+    assert alice.get("/statistics").status_code == 200
+    assert alice.get("/calendar").status_code == 200
+
+
+def test_weekly_goal_is_validated(app, make_user):
+    alice = make_user("alice")
+    assert b"1 and 7" in add_weekly(alice, target=9).data
+    assert b"1 and 7" in add_weekly(alice, target="abc").data
+    assert query(app, "SELECT COUNT(*) AS n FROM habits")[0]["n"] == 0
+    alice.post("/habits", data={"name": "Run", "category": "Fitness", "frequency": "daily", "weekly_target": "5"})
+    assert query(app, "SELECT weekly_target FROM habits")[0]["weekly_target"] == 1   # ignored for daily habits
+
+
+def test_shared_habits_cannot_be_weekly_yet(app, make_user):
+    alice = make_user("alice")
+    response = alice.post("/shared/create", data={"name": "Gym", "category": "Fitness", "frequency": "weekly"},
+                          follow_redirects=True)
+    assert b"daily or weekdays" in response.data
+    assert query(app, "SELECT COUNT(*) AS n FROM shared_habits")[0]["n"] == 0
+
+
+def test_the_mascot_has_animation_hooks(make_user):
+    assert b"m-body" in make_user("alice").get("/").data

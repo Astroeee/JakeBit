@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS rate_events;
 DROP TABLE IF EXISTS shared_members;
 DROP TABLE IF EXISTS friendships;
 DROP TABLE IF EXISTS habit_completions;
@@ -41,6 +42,7 @@ CREATE TABLE habits (
     frequency  TEXT NOT NULL DEFAULT 'daily',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     active     INTEGER NOT NULL DEFAULT 1,
+    weekly_target INTEGER NOT NULL DEFAULT 1,
     -- Set when this habit is someone's copy of a shared habit. If the group is deleted,
     -- the habit simply becomes a normal personal habit and keeps its history.
     shared_id  INTEGER REFERENCES shared_habits(id) ON DELETE SET NULL
@@ -80,3 +82,11 @@ CREATE TABLE shared_members (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (shared_id, user_id)
 );
+
+-- Remembers recent events (failed logins, sign-ups, friend requests) for rate limiting
+CREATE TABLE rate_events (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    scope   TEXT NOT NULL,
+    created REAL NOT NULL      -- unix time in seconds
+);
+CREATE INDEX idx_rate_events_scope ON rate_events (scope, created);

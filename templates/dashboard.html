@@ -21,7 +21,7 @@
       <span class="stat-label">Today's progress</span>
       <span class="stat-value">{{ percent }}%</span>
       <div class="progress"><div class="progress-bar" style="width: {{ percent }}%"></div></div>
-      <span class="stat-sub">{{ done_today }} of {{ cards|length }} habits done</span>
+      <span class="stat-sub">{{ done_today }} of {{ total_habits }} habits done</span>
     </div>
     <div class="stat-card orange">
       <span class="stat-label">Best current streak</span>
@@ -36,16 +36,25 @@
   </section>
 
   <h2>Today's habits</h2>
+  <div class="pill-row">
+    <a class="pill {{ 'active' if view == 'all' }}" href="{{ url_for('tracking.dashboard', view='all') }}">All ({{ total_habits }})</a>
+    <a class="pill {{ 'active' if view == 'todo' }}" href="{{ url_for('tracking.dashboard', view='todo') }}">To do ({{ total_habits - done_today }})</a>
+    <a class="pill {{ 'active' if view == 'done' }}" href="{{ url_for('tracking.dashboard', view='done') }}">Done ({{ done_today }})</a>
+  </div>
+
   <div class="habit-grid">
     {% for c in cards %}
-      <article class="habit-card {{ 'is-done' if c.done_today }}">
+      <article class="habit-card {{ 'is-done' if c.satisfied }}">
         <div class="habit-top">
           <span class="tag">{{ c.category }}</span>
-                    {% if c.shared_id %}<a class="tag" href="{{ url_for('shared.detail', shared_id=c.shared_id) }}">👥 Shared</a>{% endif %}
-          <span class="streak">🔥 {{ c.current }}</span>
+          {% if c.shared_id %}<a class="tag" href="{{ url_for('shared.detail', shared_id=c.shared_id) }}">👥 Shared</a>{% endif %}
+          <span class="streak">🔥 {{ c.current }}{{ c.unit }}</span>
         </div>
         <h3>{{ c.name }}</h3>
-        <p class="muted small">Longest streak: {{ c.longest }} · {{ c.total }} total</p>
+        <p class="muted small">Longest streak: {{ c.longest }}{{ c.unit }} · {{ c.total }} total</p>
+        {% if c.frequency == 'weekly' %}
+          <p class="muted small">This week: {{ c.week_count }} of {{ c.target }}{% if c.week_count >= c.target %} ✓{% endif %}</p>
+        {% endif %}
         <div class="week">
           {% for d in c.week %}
             <div class="dot-wrap">
@@ -56,14 +65,20 @@
         </div>
         <form method="post" action="{{ url_for('tracking.toggle', habit_id=c.id) }}">
           <input type="hidden" name="date" value="{{ today.isoformat() }}">
-          <input type="hidden" name="next" value="{{ url_for('tracking.dashboard') }}">
+          <input type="hidden" name="next" value="{{ url_for('tracking.dashboard', view=view) }}">
           <button type="submit" class="check-btn">
             {% if c.done_today %}✓ Done (tap to undo){% else %}Mark as done{% endif %}
           </button>
         </form>
       </article>
     {% else %}
-      <p class="empty">No active habits yet. <a href="{{ url_for('habits.habits') }}">Add your first habit</a>.</p>
+      {% if total_habits == 0 %}
+        <p class="empty">No active habits yet. <a href="{{ url_for('habits.habits') }}">Add your first habit</a>.</p>
+      {% elif view == 'done' %}
+        <p class="empty">Nothing done yet today. You've got this!</p>
+      {% else %}
+        <p class="empty">All done for today! 🎉</p>
+      {% endif %}
     {% endfor %}
   </div>
 {% endblock %}

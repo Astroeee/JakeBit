@@ -15,6 +15,13 @@
         <option value="{{ f }}" {{ 'selected' if f == habit['frequency'] }}>{{ f|capitalize }}</option>
       {% endfor %}
     </select>
+    <label class="weekly-target" data-weekly-target hidden>
+      <select name="weekly_target">
+        {% for n in range(1, 8) %}
+          <option value="{{ n }}" {{ 'selected' if n == habit['weekly_target'] }}>{{ n }}× per week</option>
+        {% endfor %}
+      </select>
+    </label>
     <button type="submit">Save changes</button>
     <a class="btn-small" href="{{ url_for('habits.habits') }}">Cancel</a>
   </form>

@@ -55,8 +55,8 @@
     </section>
 
     <section class="stats-row">
-      <div class="stat-card orange"><span class="stat-label">Current streak</span><span class="stat-value">{{ current }}</span></div>
-      <div class="stat-card purple"><span class="stat-label">Longest streak</span><span class="stat-value">{{ longest }}</span></div>
+      <div class="stat-card orange"><span class="stat-label">Current streak</span><span class="stat-value">{{ current }}</span><span class="stat-sub">{{ unit_label }}</span></div>
+      <div class="stat-card purple"><span class="stat-label">Longest streak</span><span class="stat-value">{{ longest }}</span><span class="stat-sub">{{ unit_label }}</span></div>
       <div class="stat-card teal"><span class="stat-label">Done this month</span><span class="stat-value">{{ month_done }}</span></div>
     </section>
   {% endif %}

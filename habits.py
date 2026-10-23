@@ -27,11 +27,23 @@ def validate_habit_form(form):
     return error, name, category, frequency
 
 
+def parse_weekly_target(form, frequency):
+    """How many times per week a WEEKLY habit should be done (1 to 7).
+    Habits with any other frequency always store 1. Returns (error, target)."""
+    if frequency != "weekly":
+        return None, 1
+    raw = form.get("weekly_target", "1")
+    if not (raw.isascii() and raw.isdigit()) or not 1 <= int(raw) <= 7:
+        return "Choose between 1 and 7 times per week.", 1
+    return None, int(raw)
+
+
 def get_habit_or_404(db, habit_id):
     """Fetch a habit only if it belongs to the logged-in user, otherwise show a 404.
     Every edit, pause and delete goes through here so nobody can touch someone else's habit."""
     habit = db.execute(
-        "SELECT id, name, category, frequency, active, shared_id FROM habits WHERE id = ? AND user_id = ?",
+        "SELECT id, name, category, frequency, weekly_target, active, shared_id "
+        "FROM habits WHERE id = ? AND user_id = ?",
         (habit_id, g.user["id"]),
     ).fetchone()
     if habit is None:
@@ -52,13 +64,17 @@ def habits():
 
     if request.method == "POST":
         error, name, category, frequency = validate_habit_form(request.form)
+        target = 1
+        if error is None:
+            error, target = parse_weekly_target(request.form, frequency)
         if error:
             flash(error)
         else:
             # The ? placeholders are a parameterized query, which prevents SQL injection
             db.execute(
-                "INSERT INTO habits (user_id, name, category, frequency) VALUES (?, ?, ?, ?)",
-                (g.user["id"], name, category, frequency),
+                "INSERT INTO habits (user_id, name, category, frequency, weekly_target) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (g.user["id"], name, category, frequency, target),
             )
             db.commit()
             flash("Habit added!")
@@ -66,7 +82,7 @@ def habits():
 
     # Active habits first, paused ones at the bottom
     rows = db.execute(
-        "SELECT id, name, category, frequency, active, shared_id FROM habits "
+        "SELECT id, name, category, frequency, weekly_target, active, shared_id FROM habits "
         "WHERE user_id = ? ORDER BY active DESC, created_at DESC",
         (g.user["id"],),
     ).fetchall()
@@ -85,13 +101,17 @@ def edit(habit_id):
 
     if request.method == "POST":
         error, name, category, frequency = validate_habit_form(request.form)
+        target = 1
+        if error is None:
+            error, target = parse_weekly_target(request.form, frequency)
         if error:
             flash(error)
         else:
             # user_id in the WHERE clause is a second safety check on top of get_habit_or_404
             db.execute(
-                "UPDATE habits SET name = ?, category = ?, frequency = ? WHERE id = ? AND user_id = ?",
-                (name, category, frequency, habit_id, g.user["id"]),
+                "UPDATE habits SET name = ?, category = ?, frequency = ?, weekly_target = ? "
+                "WHERE id = ? AND user_id = ?",
+                (name, category, frequency, target, habit_id, g.user["id"]),
             )
             db.commit()
             flash("Habit updated!")

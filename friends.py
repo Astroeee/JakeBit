@@ -188,16 +188,18 @@ def profile(username):
     habits = []
     if friend["show_habit_names"]:
         rows = db.execute(
-            "SELECT id, name, category, frequency FROM habits "
+            "SELECT id, name, category, frequency, weekly_target FROM habits "
             "WHERE user_id = ? AND active = 1 ORDER BY created_at",
             (friend["id"],),
         ).fetchall()
         for h in rows:
-            entry = {"name": h["name"], "category": h["category"]}
+            entry = {"name": h["name"], "category": h["category"],
+                     "unit": "w" if h["frequency"] == "weekly" else ""}
             # Per-habit streaks and dots count as "scores", so they need that switch too
             if friend["show_scores"]:
                 done = get_done_dates(db, h["id"])
-                entry["current"], entry["longest"] = compute_streaks(h["frequency"], done, today)
+                entry["current"], entry["longest"] = compute_streaks(
+                    h["frequency"], done, today, h["weekly_target"])
                 entry["week"] = [
                     {"day": today - timedelta(days=i), "done": (today - timedelta(days=i)) in done}
                     for i in range(6, -1, -1)

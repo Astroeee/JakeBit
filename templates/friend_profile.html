@@ -25,11 +25,11 @@
         <article class="habit-card">
           <div class="habit-top">
             <span class="tag">{{ h.category }}</span>
-            {% if friend['show_scores'] %}<span class="streak">🔥 {{ h.current }}</span>{% endif %}
+            {% if friend['show_scores'] %}<span class="streak">🔥 {{ h.current }}{{ h.unit }}</span>{% endif %}
           </div>
           <h3>{{ h.name }}</h3>
           {% if friend['show_scores'] %}
-            <p class="muted small">Longest streak: {{ h.longest }}</p>
+            <p class="muted small">Longest streak: {{ h.longest }}{{ h.unit }}</p>
             <div class="week">
               {% for d in h.week %}
                 <div class="dot-wrap">

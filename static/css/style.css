@@ -295,3 +295,50 @@ body[data-theme="amoled"] {
 /* ===== Notification badges ===== */
 .badge { display: inline-block; min-width: 1.2rem; padding: 0 .4rem; margin-left: .35rem; border-radius: 99px;
          background: #ef4444; color: #fff; font-size: .72rem; font-weight: 800; line-height: 1.2rem; text-align: center; }
+
+/* ===== Weekly habits: the "times per week" box ===== */
+[hidden] { display: none !important; }
+.weekly-target { display: inline-flex; }
+
+/* ===== Mascot animations (skipped for people who asked their device to reduce motion) ===== */
+.mascot { overflow: visible; }
+@media (prefers-reduced-motion: no-preference) {
+  .m-body, .m-ear, .m-eyes, .m-pant, .m-spark, .m-zzz { transform-box: fill-box; }
+
+  /* Pops in when the page loads, then breathes gently */
+  .m-body { transform-origin: 50% 90%;
+            animation: m-pop .7s cubic-bezier(.3, 1.6, .5, 1) backwards, m-breathe 4s ease-in-out .7s infinite; }
+  .mascot-sleepy .m-body { animation: m-pop .7s cubic-bezier(.3, 1.6, .5, 1) backwards, m-breathe-deep 6s ease-in-out .7s infinite; }
+  .mascot:hover .m-body { animation: m-wiggle .7s ease-in-out; }
+
+  /* Blinking */
+  .m-eyes { transform-origin: 50% 50%; animation: m-blink 5s infinite; }
+
+  /* Ears twitch now and then (and flap when he's cheering) */
+  .m-ear { animation: m-ear-twitch 7s ease-in-out infinite; }
+  .m-ear-l { transform-origin: 85% 100%; }
+  .m-ear-r { transform-origin: 15% 100%; animation-name: m-ear-twitch-r; animation-delay: -3s; }
+  .mascot-cheer .m-ear { animation-duration: 1.2s; }
+
+  /* Panting tongue */
+  .m-pant { transform-origin: 50% 0%; animation: m-pant 1.6s ease-in-out infinite; }
+  .mascot-cheer .m-pant { animation-duration: .45s; }
+
+  /* Sparkles and floating zzz's */
+  .m-spark { transform-origin: 50% 50%; animation: m-twinkle 1.4s ease-in-out infinite; }
+  .m-spark-2 { animation-delay: -.7s; }
+  .m-zzz { animation: m-float 3s ease-in-out infinite; }
+  .m-z2 { animation-delay: 1.2s; }
+
+  @keyframes m-pop { 0% { transform: scale(.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes m-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.025); } }
+  @keyframes m-breathe-deep { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
+  @keyframes m-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-6deg); }
+                        50% { transform: rotate(5deg); } 75% { transform: rotate(-3deg); } }
+  @keyframes m-blink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.1); } }
+  @keyframes m-ear-twitch { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-9deg); } 96% { transform: rotate(3deg); } }
+  @keyframes m-ear-twitch-r { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(9deg); } 96% { transform: rotate(-3deg); } }
+  @keyframes m-pant { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.12); } }
+  @keyframes m-twinkle { 0%, 100% { transform: scale(.5); opacity: .4; } 50% { transform: scale(1.15); opacity: 1; } }
+  @keyframes m-float { 0% { transform: translateY(0); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-16px); opacity: 0; } }
+}

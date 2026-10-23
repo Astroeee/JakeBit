@@ -11,6 +11,19 @@ document.addEventListener("change", (event) => {
   }
 });
 
+// Show the "times per week" box only when the frequency is Weekly
+function syncWeeklyTarget(form) {
+  const frequency = form.querySelector('select[name="frequency"]');
+  const box = form.querySelector("[data-weekly-target]");
+  if (frequency && box) box.hidden = frequency.value !== "weekly";
+}
+document.addEventListener("change", (event) => {
+  if (event.target.name === "frequency" && event.target.form) syncWeeklyTarget(event.target.form);
+});
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("form").forEach(syncWeeklyTarget);
+});
+
 // CSRF protection: the server hands every page a secret token (in a <meta> tag).
 // We add it to each POST form, and the server rejects any form without it.
 document.addEventListener("DOMContentLoaded", () => {
