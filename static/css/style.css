@@ -342,3 +342,7 @@ body[data-theme="amoled"] {
   @keyframes m-twinkle { 0%, 100% { transform: scale(.5); opacity: .4; } 50% { transform: scale(1.15); opacity: 1; } }
   @keyframes m-float { 0% { transform: translateY(0); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-16px); opacity: 0; } }
 }
+
+.recovery-code code { display: block; padding: 1rem; border-radius: 12px; background: var(--grey);
+                      font-size: 1.5rem; letter-spacing: .08em; text-align: center; user-select: all; }
+.inline-form input[type=password] { flex: 1 1 200px; padding: .7rem; font-size: 1rem; border: 1px solid #ddd; border-radius: 10px; }

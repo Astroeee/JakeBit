@@ -21,7 +21,8 @@ CREATE TABLE users (
     -- Privacy: what accepted friends are allowed to see (1 = yes, 0 = no)
     show_scores      INTEGER NOT NULL DEFAULT 1,
     show_habit_names INTEGER NOT NULL DEFAULT 0,
-    avatar           TEXT   -- filename of the uploaded profile picture (NULL = none)
+    avatar           TEXT,  -- filename of the uploaded profile picture (NULL = none)
+    recovery_hash    TEXT   -- hash of the one-time recovery code (NULL = none yet)
 );
 
 -- A habit done together by a pair or group. Each member also gets their own row in `habits`.

@@ -666,3 +666,70 @@ def test_shared_habits_cannot_be_weekly_yet(app, make_user):
 
 def test_the_mascot_has_animation_hooks(make_user):
     assert b"m-body" in make_user("alice").get("/").data
+
+# --------------------------------------------------------------- password recovery
+import re
+CODE_RE = re.compile(r"[A-HJ-NP-Z2-9]{4}(?:-[A-HJ-NP-Z2-9]{4}){3}")
+NEW_PW = "brand-new-pw1"
+
+
+def get_code(client, password=PASSWORD):
+    response = client.post("/settings/recovery", data={"password": password}, follow_redirects=True)
+    return CODE_RE.search(response.data.decode()).group(0)
+
+
+def reset(client, username, code, password=NEW_PW):
+    return client.post("/reset-password", data={"username": username, "code": code,
+                                                "password": password, "confirm": password},
+                       follow_redirects=True)
+
+
+def test_reset_with_a_recovery_code_and_the_code_works_only_once(app, make_user):
+    alice = make_user("alice")
+    code = get_code(alice)
+    new_code = CODE_RE.search(reset(app.test_client(), "alice", code).data.decode()).group(0)
+    assert new_code != code
+    assert login(app.test_client(), "alice", NEW_PW).status_code == 302
+    assert b"Incorrect" in login(app.test_client(), "alice", PASSWORD).data
+    reset(app.test_client(), "alice", code, "other-new-pw1")                      # the old code is dead
+    assert b"Incorrect" in login(app.test_client(), "alice", "other-new-pw1").data
+
+
+def test_code_format_is_forgiving(app, make_user):
+    alice = make_user("alice")
+    code = get_code(alice)
+    reset(app.test_client(), "alice", code.lower().replace("-", " "))
+    assert login(app.test_client(), "alice", NEW_PW).status_code == 302
+
+
+def test_wrong_codes_unknown_users_and_accounts_without_a_code_look_the_same(app, make_user):
+    make_user("alice")                                                            # has no code yet
+    for name in ("alice", "ghost"):
+        response = reset(app.test_client(), name, "AAAA-AAAA-AAAA-AAAA")
+        assert response.status_code == 200 and b"don&#39;t match" in response.data
+    assert b"Incorrect" in login(app.test_client(), "alice", NEW_PW).data
+
+
+def test_reset_attempts_are_rate_limited(app, make_user):
+    make_user("alice")
+    client = app.test_client()
+    for _ in range(5):
+        assert reset(client, "alice", "AAAA-AAAA-AAAA-AAAA").status_code == 200
+    assert reset(client, "alice", "AAAA-AAAA-AAAA-AAAA").status_code == 429
+
+
+def test_making_a_code_needs_your_password_and_it_is_stored_hashed(app, make_user):
+    alice = make_user("alice")
+    alice.post("/settings/recovery", data={"password": "wrong-pass-1"})
+    assert query(app, "SELECT recovery_hash FROM users")[0]["recovery_hash"] is None
+    code = get_code(alice)
+    stored = query(app, "SELECT recovery_hash FROM users")[0]["recovery_hash"]
+    assert stored and code.replace("-", "") not in stored
+    assert alice.get("/recovery-code").status_code == 302                          # shown only once
+
+
+def test_banner_asks_for_a_recovery_code_until_you_make_one(app, make_user):
+    alice = make_user("alice")
+    assert b"so you can reset your password" in alice.get("/").data
+    get_code(alice)
+    assert b"so you can reset your password" not in alice.get("/").data

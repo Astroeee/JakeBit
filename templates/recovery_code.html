@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Your recovery code{% endblock %}
+{% block content %}
+  <section class="panel auth-card">
+    <h1>Your recovery code</h1>
+    <p>Save it somewhere safe, like a password manager or a note on paper. It is <strong>shown only once</strong> and works only one time.</p>
+    <p class="recovery-code"><code>{{ code }}</code></p>
+    <a class="btn-small" href="{{ url_for('settings.settings') if g.user else url_for('auth.login') }}">I've saved it</a>
+  </section>
+{% endblock %}

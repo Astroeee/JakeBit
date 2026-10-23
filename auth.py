@@ -27,7 +27,8 @@ def load_logged_in_user():
     else:
         g.user = get_db().execute(
             "SELECT id, username, email, theme, bg, card, fur, mascot_name, "
-            "show_scores, show_habit_names, avatar FROM users WHERE id = ?",
+            "show_scores, show_habit_names, avatar, "
+            "(recovery_hash IS NOT NULL) AS has_recovery FROM users WHERE id = ?",
             (user_id,),
         ).fetchone()  # None if the account no longer exists
 

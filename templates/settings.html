@@ -92,6 +92,15 @@
   </form>
 
     <section class="panel set-section">
+    <h2>Password recovery</h2>
+    <p class="muted small">A recovery code lets you set a new password if you forget it. {% if g.user['has_recovery'] %}You have one; making a new code replaces it.{% else %}You don't have one yet.{% endif %}</p>
+    <form method="post" action="{{ url_for('recovery.regenerate') }}" class="inline-form">
+      <input type="password" name="password" placeholder="Your current password" autocomplete="current-password" required>
+      <button type="submit" class="btn-small">Make a new code</button>
+    </form>
+  </section>
+  
+    <section class="panel set-section">
     <h2>Account</h2>
     <p class="muted">Signed in as <strong>{{ g.user['username'] }}</strong> ({{ g.user['email'] }})</p>
     <form method="post" action="{{ url_for('auth.logout') }}">

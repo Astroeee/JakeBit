@@ -40,6 +40,9 @@
       {% endif %}
     </aside>
     <main class="content">
+      {% if g.user and not g.user['has_recovery'] and request.endpoint != 'settings.settings' %}
+        <p class="flash">Set up a <a href="{{ url_for('settings.settings') }}">recovery code</a> so you can reset your password if you forget it.</p>
+      {% endif %}
       {% for message in get_flashed_messages() %}
         <p class="flash">{{ message }}</p>
       {% endfor %}

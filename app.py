@@ -47,6 +47,8 @@ def create_app(test_config=None):
     from friends import bp as friends_bp
     from shared import bp as shared_bp
     from settings import bp as settings_bp, get_ui_settings
+    from recovery import bp as recovery_bp
+    app.register_blueprint(recovery_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(avatars_bp)
     app.register_blueprint(habits_bp)
