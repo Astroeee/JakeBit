@@ -1,6 +1,5 @@
 """Shared test setup. pytest automatically loads this file before running any tests."""
 import pytest
-
 import db as database
 from app import create_app
 

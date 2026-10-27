@@ -8,11 +8,13 @@
     <h1>{{ today.strftime('%B %d, %Y') }}</h1>
   </header>
 
-  <section class="panel mascot-card">
-    {{ mascot(mood, 130) }}
-    <div class="bubble">
-      <strong>{{ ui.mascot_name }}</strong>
-      <p>{{ message }}</p>
+  <section class="panel hero">
+    <div class="hero-pet">{{ mascot(mood, 320) }}</div>
+    <div class="hero-info">
+      <p class="hero-name">{{ ui.mascot_name }}</p>
+      <div class="bubble"><p>{{ message }}</p></div>
+      <p class="hero-streak"><span class="hero-flame">🔥</span><strong>{{ best_streak }}</strong> day streak</p>
+      <p class="muted small">Longest ever: {{ best_longest }} days · Today: {{ percent }}% done</p>
     </div>
   </section>
 
@@ -51,6 +53,7 @@
           <span class="streak">🔥 {{ c.current }}{{ c.unit }}</span>
         </div>
         <h3>{{ c.name }}</h3>
+        <p class="muted small">{{ c.schedule }}{% if not c.scheduled_today %} · Rest day{% endif %}</p>
         <p class="muted small">Longest streak: {{ c.longest }}{{ c.unit }} · {{ c.total }} total</p>
         {% if c.frequency == 'weekly' %}
           <p class="muted small">This week: {{ c.week_count }} of {{ c.target }}{% if c.week_count >= c.target %} ✓{% endif %}</p>

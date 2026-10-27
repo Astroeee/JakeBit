@@ -1,16 +1,16 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, g
 from db import get_db
 from auth import login_required
+from tracking import days_to_mask, mask_to_days
 
 bp = Blueprint("habits", __name__)
 
 CATEGORIES = ["Health", "Fitness", "Learning", "Mindfulness", "Productivity", "Other"]
-FREQUENCIES = ["daily", "weekdays", "weekly"]
+FREQUENCIES = ["daily", "weekdays", "weekly", "custom"]
 
 
 def validate_habit_form(form):
-    """Check the habit form. Used by Add, Edit and shared habits so the rules stay identical.
-    Returns (error, name, category, frequency); error is None when everything is valid."""
+    """Returns (error, name, category, frequency); error is None when everything is valid."""
     name = form.get("name", "").strip()
     category = form.get("category")
     frequency = form.get("frequency")
@@ -28,8 +28,7 @@ def validate_habit_form(form):
 
 
 def parse_weekly_target(form, frequency):
-    """How many times per week a WEEKLY habit should be done (1 to 7).
-    Habits with any other frequency always store 1. Returns (error, target)."""
+    """Times per week (1 to 7) for WEEKLY habits; other habits store 1. Returns (error, target)."""
     if frequency != "weekly":
         return None, 1
     raw = form.get("weekly_target", "1")
@@ -38,11 +37,21 @@ def parse_weekly_target(form, frequency):
     return None, int(raw)
 
 
+def parse_days(form, frequency):
+    """Which weekdays a CUSTOM habit is done on, as a bit mask (Monday = bit 0).
+    Other habits store 127 (every day). Returns (error, mask)."""
+    if frequency != "custom":
+        return None, 127
+    picked = form.getlist("days")
+    if not picked or any(not (d.isascii() and d.isdigit() and int(d) <= 6) for d in picked):
+        return "Pick at least one day of the week.", 127
+    return None, days_to_mask(int(d) for d in picked)
+
+
 def get_habit_or_404(db, habit_id):
-    """Fetch a habit only if it belongs to the logged-in user, otherwise show a 404.
-    Every edit, pause and delete goes through here so nobody can touch someone else's habit."""
+    """Fetch a habit only if it belongs to the logged-in user, otherwise show a 404."""
     habit = db.execute(
-        "SELECT id, name, category, frequency, weekly_target, active, shared_id "
+        "SELECT id, name, category, frequency, weekly_target, days_mask, active, shared_id "
         "FROM habits WHERE id = ? AND user_id = ?",
         (habit_id, g.user["id"]),
     ).fetchone()
@@ -64,25 +73,25 @@ def habits():
 
     if request.method == "POST":
         error, name, category, frequency = validate_habit_form(request.form)
-        target = 1
+        target, mask = 1, 127
         if error is None:
             error, target = parse_weekly_target(request.form, frequency)
+        if error is None:
+            error, mask = parse_days(request.form, frequency)
         if error:
             flash(error)
         else:
-            # The ? placeholders are a parameterized query, which prevents SQL injection
             db.execute(
-                "INSERT INTO habits (user_id, name, category, frequency, weekly_target) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (g.user["id"], name, category, frequency, target),
+                "INSERT INTO habits (user_id, name, category, frequency, weekly_target, days_mask) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (g.user["id"], name, category, frequency, target, mask),
             )
             db.commit()
             flash("Habit added!")
-            return redirect(url_for("habits.habits"))  # redirect so refreshing doesn't resubmit
+            return redirect(url_for("habits.habits"))
 
-    # Active habits first, paused ones at the bottom
     rows = db.execute(
-        "SELECT id, name, category, frequency, weekly_target, active, shared_id FROM habits "
+        "SELECT id, name, category, frequency, weekly_target, days_mask, active, shared_id FROM habits "
         "WHERE user_id = ? ORDER BY active DESC, created_at DESC",
         (g.user["id"],),
     ).fetchall()
@@ -101,42 +110,41 @@ def edit(habit_id):
 
     if request.method == "POST":
         error, name, category, frequency = validate_habit_form(request.form)
-        target = 1
+        target, mask = 1, 127
         if error is None:
             error, target = parse_weekly_target(request.form, frequency)
+        if error is None:
+            error, mask = parse_days(request.form, frequency)
         if error:
             flash(error)
         else:
-            # user_id in the WHERE clause is a second safety check on top of get_habit_or_404
             db.execute(
-                "UPDATE habits SET name = ?, category = ?, frequency = ?, weekly_target = ? "
+                "UPDATE habits SET name = ?, category = ?, frequency = ?, weekly_target = ?, days_mask = ? "
                 "WHERE id = ? AND user_id = ?",
-                (name, category, frequency, target, habit_id, g.user["id"]),
+                (name, category, frequency, target, mask, habit_id, g.user["id"]),
             )
             db.commit()
             flash("Habit updated!")
             return redirect(url_for("habits.habits"))
 
     return render_template(
-        "edit_habit.html", habit=habit, categories=CATEGORIES, frequencies=FREQUENCIES
+        "edit_habit.html", habit=habit, categories=CATEGORIES, frequencies=FREQUENCIES,
+        selected_days=mask_to_days(habit["days_mask"]),
     )
 
 
 @bp.route("/habits/<int:habit_id>/toggle-active", methods=("POST",))
 @login_required
 def toggle_active(habit_id):
-    """Pause or re-activate a habit. A paused habit keeps its history but disappears
-    from the dashboard, calendar and statistics."""
+    """Pause or re-activate a habit. A paused habit keeps its history."""
     db = get_db()
     habit = get_habit_or_404(db, habit_id)
     if habit["shared_id"]:
         return shared_redirect(habit)
 
     new_value = 0 if habit["active"] else 1
-    db.execute(
-        "UPDATE habits SET active = ? WHERE id = ? AND user_id = ?",
-        (new_value, habit_id, g.user["id"]),
-    )
+    db.execute("UPDATE habits SET active = ? WHERE id = ? AND user_id = ?",
+               (new_value, habit_id, g.user["id"]))
     db.commit()
     flash("Habit activated." if new_value else "Habit paused.")
     return redirect(url_for("habits.habits"))
@@ -145,8 +153,7 @@ def toggle_active(habit_id):
 @bp.route("/habits/<int:habit_id>/delete", methods=("POST",))
 @login_required
 def delete(habit_id):
-    """Permanently delete a habit. ON DELETE CASCADE in the schema removes its
-    completion records automatically."""
+    """Permanently delete a habit (ON DELETE CASCADE removes its completion records)."""
     db = get_db()
     habit = get_habit_or_404(db, habit_id)
     if habit["shared_id"]:

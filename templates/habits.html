@@ -9,9 +9,14 @@
       {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
     </select>
     <select name="frequency">
-      {% for f in frequencies %}<option value="{{ f }}">{{ f|capitalize }}</option>{% endfor %}
+      {% for f in frequencies %}<option value="{{ f }}">{{ 'Custom days' if f == 'custom' else f|capitalize }}</option>{% endfor %}
     </select>
     <label class="weekly-target" data-weekly-target hidden>
+          <fieldset class="day-picker" data-custom-days hidden>
+      {% for name in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+        <label class="day-chip"><input type="checkbox" name="days" value="{{ loop.index0 }}" {{ 'checked' if selected_days is defined and loop.index0 in selected_days }}><span>{{ name }}</span></label>
+      {% endfor %}
+    </fieldset>
       <select name="weekly_target">
         {% for n in range(1, 8) %}<option value="{{ n }}">{{ n }}× per week</option>{% endfor %}
       </select>
@@ -24,7 +29,7 @@
       <li class="habit-row {{ 'is-paused' if not h['active'] }}">
         <div class="habit-info">
           <strong>{{ h['name'] }}</strong>
-          <span>{{ h['category'] }} · {% if h['frequency'] == 'weekly' %}{{ h['weekly_target'] }}× per week{% else %}{{ h['frequency'] }}{% endif %}{% if h['shared_id'] %} · 👥 Shared{% endif %}{% if not h['active'] %} · Paused{% endif %}</span>
+          <span>{{ h['category'] }} · {{ schedule_label(h['frequency'], h['weekly_target'], h['days_mask']) }}{% if h['shared_id'] %} · 👥 Shared{% endif %}{% if not h['active'] %} · Paused{% endif %}</span>
         </div>
         <div class="habit-actions">
           {% if h['shared_id'] %}

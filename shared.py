@@ -90,7 +90,7 @@ def index():
 
     return render_template(
         "shared.html", invites=invites, mine=mine, friends=my_friends(db, me),
-        categories=CATEGORIES, frequencies=[f for f in FREQUENCIES if f != "weekly"],
+        categories=CATEGORIES, frequencies=[f for f in FREQUENCIES if f not in ("weekly", "custom")],
         max_invites=MAX_MEMBERS - 1,
     )
 
@@ -103,7 +103,7 @@ def create():
 
     # Same validation rules as a normal habit
     error, name, category, frequency = validate_habit_form(request.form)
-    if error is None and frequency == "weekly":
+    if error is None and frequency in ("weekly", "custom"):
         error = "Shared habits can be daily or weekdays for now."
     invitees = set()
     if error is None:

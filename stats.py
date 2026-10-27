@@ -13,7 +13,7 @@ def statistics():
     db = get_db()
     today = date.today()
     habits = db.execute(
-        "SELECT id, name, frequency, weekly_target, created_at FROM habits "
+        "SELECT id, name, frequency, weekly_target, days_mask, created_at FROM habits "
         "WHERE user_id = ? AND active = 1",
         (g.user["id"],),
     ).fetchall()
@@ -23,30 +23,27 @@ def statistics():
     for h in habits:
         done = get_done_dates(db, h["id"])
         created = date.fromisoformat(h["created_at"][:10])
-
-        # Today only counts once it's done, so an unfinished day doesn't hurt your rate yet
         start = min([created] + list(done))
-        end = today if today in done else today - timedelta(days=1)
-        hits, required = period_counts(h["frequency"], h["weekly_target"], done, start, end)
-        current, longest = compute_streaks(h["frequency"], done, today, h["weekly_target"])
+        end = today if today in done else today - timedelta(days=1)   # today isn't a miss until it's over
+        hits, required = period_counts(h["frequency"], h["weekly_target"], done, start, end, h["days_mask"])
+        current, longest = compute_streaks(h["frequency"], done, today, h["weekly_target"], h["days_mask"])
 
         weekly = h["frequency"] == "weekly"
         rows.append({
-            "name": h["name"], "frequency": h["frequency"], "created": created, "done": done,
-            "weekly": weekly, "unit": "w" if weekly else "",
+            "name": h["name"], "frequency": h["frequency"], "days_mask": h["days_mask"],
+            "created": created, "done": done, "weekly": weekly, "unit": "w" if weekly else "",
             "rate": round(100 * hits / required) if required else 0,
             "current": current, "longest": longest, "total": len(done),
         })
         total_hits += hits
         total_required += required
 
-    # Last 30 days: what share of the DAILY-style habits that were due each day did you finish?
-    # (Weekly habits have no "due today", so they're measured in the rates and rankings instead.)
+    # Last 30 days: share of the daily-style habits scheduled each day that you finished
     chart = []
     daily_rows = [r for r in rows if not r["weekly"]]
     for i in range(29, -1, -1):
         d = today - timedelta(days=i)
-        due = [r for r in daily_rows if r["created"] <= d and is_required(r["frequency"], d)]
+        due = [r for r in daily_rows if r["created"] <= d and is_required(r["frequency"], d, r["days_mask"])]
         finished = sum(1 for r in due if d in r["done"])
         chart.append({
             "day": d, "done": finished, "required": len(due),
@@ -58,7 +55,6 @@ def statistics():
         "statistics.html",
         rows=rows, chart=chart, has_weekly=any(r["weekly"] for r in rows),
         overall_rate=round(100 * total_hits / total_required) if total_required else 0,
-        # streaks in "days" only make sense for daily-style habits
         best_current=max((r["current"] for r in daily_rows), default=0),
         best_longest=max((r["longest"] for r in daily_rows), default=0),
         total_done=sum(r["total"] for r in rows),

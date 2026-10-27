@@ -12,10 +12,15 @@
     </select>
     <select name="frequency">
       {% for f in frequencies %}
-        <option value="{{ f }}" {{ 'selected' if f == habit['frequency'] }}>{{ f|capitalize }}</option>
+        <option value="{{ f }}" {{ 'selected' if f == habit['frequency'] }}>{{ 'Custom days' if f == 'custom' else f|capitalize }}</option>
       {% endfor %}
     </select>
     <label class="weekly-target" data-weekly-target hidden>
+          <fieldset class="day-picker" data-custom-days hidden>
+      {% for name in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+        <label class="day-chip"><input type="checkbox" name="days" value="{{ loop.index0 }}" {{ 'checked' if selected_days is defined and loop.index0 in selected_days }}><span>{{ name }}</span></label>
+      {% endfor %}
+    </fieldset>
       <select name="weekly_target">
         {% for n in range(1, 8) %}
           <option value="{{ n }}" {{ 'selected' if n == habit['weekly_target'] }}>{{ n }}× per week</option>

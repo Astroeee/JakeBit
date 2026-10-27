@@ -47,7 +47,9 @@ def create_app(test_config=None):
     from friends import bp as friends_bp
     from shared import bp as shared_bp
     from settings import bp as settings_bp, get_ui_settings
+    from tracking import describe_schedule
     from recovery import bp as recovery_bp
+    from pixelart import render_mascot
     app.register_blueprint(recovery_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(avatars_bp)
@@ -61,7 +63,7 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_ui():
         # Makes `ui` (theme, background, mascot...) available in every template
-        return {"ui": get_ui_settings()}
+        return {"ui": get_ui_settings(), "schedule_label": describe_schedule}
 
     @app.context_processor
     def inject_notifications():
@@ -86,6 +88,8 @@ def create_app(test_config=None):
         flash("That file is too big. Please choose a picture under 5 MB.")
         return redirect(url_for("settings.settings"))
 
+    app.jinja_env.globals["pixel_mascot"] = render_mascot
+    
     return app
 
 app = create_app()

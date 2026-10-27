@@ -188,7 +188,7 @@ def profile(username):
     habits = []
     if friend["show_habit_names"]:
         rows = db.execute(
-            "SELECT id, name, category, frequency, weekly_target FROM habits "
+            "SELECT id, name, category, frequency, weekly_target, days_mask FROM habits "
             "WHERE user_id = ? AND active = 1 ORDER BY created_at",
             (friend["id"],),
         ).fetchall()

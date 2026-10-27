@@ -664,8 +664,16 @@ def test_shared_habits_cannot_be_weekly_yet(app, make_user):
     assert query(app, "SELECT COUNT(*) AS n FROM shared_habits")[0]["n"] == 0
 
 
-def test_the_mascot_has_animation_hooks(make_user):
-    assert b"m-body" in make_user("alice").get("/").data
+def test_the_pixel_mascot_is_on_the_dashboard(make_user):
+    assert b"px-bob" in make_user("alice").get("/").data
+
+
+def test_pixel_mascot_renders_every_mood_and_survives_bad_input():
+    import xml.etree.ElementTree as ET
+    from pixelart import render_mascot
+    for mood in ("happy", "cheer", "sleepy", "nonsense"):
+        ET.fromstring(str(render_mascot(mood, 240)))
+    assert "<svg" in str(render_mascot("happy", "huge"))
 
 # --------------------------------------------------------------- password recovery
 import re
@@ -733,3 +741,53 @@ def test_banner_asks_for_a_recovery_code_until_you_make_one(app, make_user):
     assert b"so you can reset your password" in alice.get("/").data
     get_code(alice)
     assert b"so you can reset your password" not in alice.get("/").data
+
+# ------------------------------------------------------------------ custom days
+MWF = 21   # Monday + Wednesday + Friday
+
+
+@pytest.mark.parametrize("mask, done, expected", [
+    (MWF, {date(2026, 10, 12), date(2026, 10, 14)}, (2, 2)),        # Mon + Wed done, Tuesday is a day off
+    (MWF, {date(2026, 10, 9), date(2026, 10, 12)}, (2, 2)),         # Wednesday not done YET: streak survives
+    (MWF, {date(2026, 10, 9), date(2026, 10, 14)}, (1, 1)),         # missed Monday breaks it
+    (MWF, {date(2026, 10, 13)}, (0, 0)),                            # done on a day off: ignored
+    (0, {date(2026, 10, 13)}, (0, 0)),                              # no days chosen: no streak, no endless loop
+    (64, {date(2026, 10, 4), date(2026, 10, 11)}, (2, 2)),          # Sundays only
+])
+def test_custom_day_streaks(mask, done, expected):
+    assert compute_streaks("custom", done, WED, 1, mask) == expected
+
+
+def add_custom(client, name="Gym days", days=("0", "2", "4")):
+    return client.post("/habits", data={"name": name, "category": "Fitness", "frequency": "custom",
+                                        "days": list(days)}, follow_redirects=True)
+
+
+def test_custom_days_are_saved_and_shown(app, make_user):
+    alice = make_user("alice")
+    add_custom(alice)
+    assert query(app, "SELECT days_mask FROM habits")[0]["days_mask"] == MWF
+    assert b"Mon, Wed, Fri" in alice.get("/habits").data
+
+
+def test_custom_days_need_at_least_one_valid_day(app, make_user):
+    alice = make_user("alice")
+    for bad in ([], ["7"], ["x"]):
+        assert b"at least one day" in add_custom(alice, days=bad).data
+    assert query(app, "SELECT COUNT(*) AS n FROM habits")[0]["n"] == 0
+
+
+def test_days_off_are_rest_days_on_the_dashboard(app, make_user):
+    alice = make_user("alice")
+    add_custom(alice, days=[str((date.today().weekday() + 1) % 7)])     # scheduled only for tomorrow's weekday
+    assert b"Rest day" in alice.get("/").data
+    alice.post(f"/habits/{habit_id(app, 'Gym days')}/delete")
+    add_custom(alice, name="Today habit", days=[str(date.today().weekday())])
+    assert b"Rest day" not in alice.get("/").data
+
+
+def test_shared_habits_cannot_use_custom_days(app, make_user):
+    alice = make_user("alice")
+    response = alice.post("/shared/create", data={"name": "Gym", "category": "Fitness", "frequency": "custom"},
+                          follow_redirects=True)
+    assert b"daily or weekdays" in response.data
