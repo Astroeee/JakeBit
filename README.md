@@ -1,4 +1,4 @@
-# Habit Tracker
+# Jakebit
 
 A web app for building habits together. Track daily habits, watch your streaks grow, compete with friends on a leaderboard, and share habits with a partner or group, all with a chow chow mascot cheering you on.
 

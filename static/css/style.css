@@ -112,7 +112,7 @@ button.cell:hover { outline: 2px solid var(--purple); }
 }
 
 /* ===== Themes: each one just overrides the color variables ===== */
-:root { --fur: #d9822b; --fur-dark: #b9651a; --fur-light: #f2b46b; }
+:root { --fur: #fdd699; --fur-dark: #f7c27a; --fur-light: #fae6c4; }
 
 body[data-theme="ocean"]    { --purple: #0284c7; --purple-soft: #e0f2fe; --bg: #f0f9ff; --shadow: 0 4px 16px rgba(2,132,199,.12); }
 body[data-theme="sunset"]   { --purple: #ea580c; --purple-soft: #ffedd5; --orange-soft: #fce7f3; --bg: #fff7ed; --shadow: 0 4px 16px rgba(234,88,12,.12); }
@@ -140,7 +140,9 @@ body[data-card="outline"] .habit-card { border-color: var(--purple); }
 body[data-card="outline"] .habit-card.is-done { border-color: var(--green); }
 
 /* ===== Mascot colors ===== */
-body[data-fur="cream"] { --fur: #f0d9a8; --fur-dark: #d6b97c; --fur-light: #fbeccb; }
+body[data-fur="cream"] { --fur: #f3e7cf; --fur-dark: #dfcfa6; --fur-light: #fffaf0; }
+body[data-fur="rust"]  { --fur: #c8602a; --fur-dark: #a04a1c; --fur-light: #e8914f; }
+body[data-fur="brown"] { --fur: #8a5a3b; --fur-dark: #6b4129; --fur-light: #b57d55; }
 body[data-fur="black"] { --fur: #3f3f4a; --fur-dark: #2b2b33; --fur-light: #5a5a68; }
 body[data-fur="blue"]  { --fur: #8493aa; --fur-dark: #66758c; --fur-light: #a9b6c9; }
 .m-fur { fill: var(--fur); }
@@ -384,3 +386,10 @@ body[data-theme="amoled"] {
 .hero-streak strong { font-size: 3.6rem; line-height: 1; color: var(--purple); }
 .hero-flame { font-size: 2.4rem; }
 @media (max-width: 700px) { .hero { justify-content: center; text-align: center; } .hero-streak { justify-content: center; } }
+
+/* ===== Pixel nature scenes (dashboard widgets) ===== */
+.scene-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 0 0 1.5rem; }
+.scene-card { margin: 0; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+body[data-card="outline"] .scene-card { border: 2px solid var(--purple); }
+.scene { width: 100%; }
+.scene-card figcaption { display: flex; flex-direction: column; gap: .15rem; padding: .7rem .9rem .9rem; }

@@ -50,6 +50,7 @@ def create_app(test_config=None):
     from tracking import describe_schedule
     from recovery import bp as recovery_bp
     from pixelart import render_mascot
+    from pixelscenes import render_scene
     app.register_blueprint(recovery_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(avatars_bp)
@@ -89,6 +90,7 @@ def create_app(test_config=None):
         return redirect(url_for("settings.settings"))
 
     app.jinja_env.globals["pixel_mascot"] = render_mascot
+    app.jinja_env.globals["pixel_scene"] = render_scene
     
     return app
 

@@ -207,6 +207,7 @@ def dashboard():
         today=today, cards=visible, view=view, total_habits=len(cards),
         done_today=done_count, percent=percent,
         best_streak=max((c["current"] for c in cards if not c["unit"]), default=0),
+        best_longest=max((c["longest"] for c in cards if not c["unit"]), default=0),
         total_completions=sum(c["total"] for c in cards),
         mood=mood, message=message,
     )

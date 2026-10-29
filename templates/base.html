@@ -5,14 +5,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>{% block title %}Habit Tracker{% endblock %}</title>
+  <title>{% block title %}Jakebit{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </head>
 <body data-theme="{{ ui.theme }}" data-mode="{{ ui.mode }}" data-bg="{{ ui.bg }}" data-card="{{ ui.card }}" data-fur="{{ ui.fur }}">
   <div class="app">
     <aside class="sidebar">
-      <div class="brand">Habit Tracker</div>
+      <div class="brand">Jakebit</div>
       <nav>
         {% if g.user %}
           <a href="{{ url_for('tracking.dashboard') }}" class="{{ 'active' if request.endpoint == 'tracking.dashboard' }}">Dashboard</a>

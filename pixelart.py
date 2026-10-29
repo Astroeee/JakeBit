@@ -1,97 +1,75 @@
 """The pixel-art chow chow mascot, drawn as crisp SVG rectangles (no image files needed).
 
-Each sprite is a small grid of letters on a 36 x 32 canvas. "." is transparent. The letters
+A fluffy side-view chow chow: big round light head, golden body, curled tail.
+Each sprite is a grid of letters on a 42 x 36 canvas. "." is transparent. The letters
 f, d and l are the three fur shades: they get CSS classes, so the fur colour chosen in Settings
 (and its live preview) just works. Every other letter is a fixed colour from PALETTE.
 A layer is (x, y, rows): where its top-left corner sits on the canvas.
 """
 from markupsafe import Markup
 
-WIDTH, HEIGHT = 36, 32
+WIDTH, HEIGHT = 42, 36
 FUR_LETTERS = {"f": "px-f", "d": "px-d", "l": "px-l"}
 PALETTE = {"o": "#3b2314", "c": "#fdf0dc", "n": "#2b2233", "t": "#4a4a8c", "w": "#ffffff",
            "p": "#ff8fa3", "Y": "#ffeb3b", "z": "#8ea0ff"}
 
 # ---------------------------------------------------------------- the art
-BODY = (0, 1, [
-    "...........oo.......................",
-    "...ooooo..ollo.ooo.oooo.............",
-    "..offffloollloollloffffo............",
-    ".offffffllllllllllffffffo...........",
-    ".offddffllllllllllffddffo...........",
-    ".ofddddfllllllllllfddddfo...........",
-    ".offddffllllllllllffddffo...........",
-    "..offffllllllllllllfffflo...........",
-    ".oollllllllllllllllllllllo.....oo...",
-    "ollllllllllllllllllllllllo....offo..",
-    "olllllllllllllllllllllllo....ollffo.",
-    "ollllllllllllllllllllllloo..ollllffo",
-    ".ollllllllllllllllllllllllo.ollllffo",
-    ".ollllllllllllllllllllllllooffllffff",
-    "olllllllllllllllllllllllooffffffffff",
-    "ollllllllllllllllllllllloffffffffffo",
-    "olllllllllcnnncclllllllllofffffffffo",
-    ".oolfllllccnnncccllllfllloffffffffo.",
-    "..olffllccccncccccllffllofffffffffo.",
-    ".olfffflcccccccccclffffoffffffffffo.",
-    "..olfffffccccccccfffffofffffffffffo.",
-    "...offffffccccccffffffofffffffffffo.",
-    "....ooffffffffffffffoodddddfffffffo.",
-    ".....ooloffffffffloodddfffffffdfffo.",
-    "....offofoollooooodddddfffffffddfo..",
-    "....offffffooodddddddddfffffffddo...",
-    "....offfffffo.oofddddddfffffffoo....",
-    "....olllllllo...ooffffflllllllo.....",
-    "....olllllllo.....ooooolllllllo.....",
-    ".....ooooooo...........ooooooo......",
+BODY = (2, 3, [
+    "....oooooooooooooo....................",
+    "...ollllllllllllllo...................",
+    "..ollllllllllllllllo..................",
+    ".ollllllllllllllllllo.................",
+    "olldddddllllllldddddlo................",
+    "oldlllllllllllllllldllooooo...........",
+    "oldlllllllllllllllldllfffffooooooo....",
+    "oldlllllllllllllllldllffffffllllllo...",
+    "oldlllllllllllllllldllfffffffllllllo..",
+    "olldllllldllldlllldlllffffffflllllllo.",
+    "olllllllldllldllllllllfffffffflllllllo",
+    "olllllllllllllllllllllfffffffffllllllo",
+    "olllllddlllllllddlllllffdffffffllllllo",
+    "olllllllllllllllllllllfffdfdfffflllllo",
+    "ollllllllfffffllllllllffffdffffffllllo",
+    "olllllllffffffflllllllffffffffffffllo.",
+    "olllllllffffffflllllllfffffffffffffo..",
+    "olllllllfffffffllllllffffffffffffffo..",
+    "ollllllllffffflllllllffffffffffffffo..",
+    ".ollllllllllllllllllfffffffffffffffo..",
+    "..ollllllllllllllllffffffffffffffdfo..",
+    "...ollllllllllllllfffffffffffffffdfo..",
+    "....ooffffffffffffffffffffdfffdffffo..",
+    "......offffffffffffffffffffdfffdfffo..",
+    ".......offfffffffffffffffdfffffffffo..",
+    "........offffffffffffffffffffffffffo..",
+    ".........offfffffffffffffffffffffffo..",
+    "..........offfffffffoodffffffffffffo..",
+    ".........olllllllllo...olllllfffffo...",
+    "........olllllllllo....olllllffffo....",
+    "........ollllllllo......ollllffffo....",
+    "........oooooooooo......ooooooooo.....",
 ])
 
+# A face is a list of layers drawn on top of the big round head.
+_NOSE = (12, 17, ["nnn", ".n."])
+_BLUSH = [(7, 17, ["pp"]), (18, 17, ["pp"])]
 FACES = {
-    "happy": (3, 12, [
-        "....wn........wn...",
-        "....nn........nn...",
-        "....nn........nn...",
-        "...................",
-        "...................",
-        "pp...............pp",
-        "pp...............pp",
-        "...................",
-        "........nnn........",
-        "........ttt........",
-        "........ttt........",
-        "........ttt........",
-    ]),
-    "cheer": (3, 13, [
-        ".....nn........nn..",
-        "....n..n......n..n.",
-        "...................",
-        "...................",
-        "pp...............pp",
-        "pp...............pp",
-        "...................",
-        "........nnnn.......",
-        "........nttn.......",
-        "........nttn.......",
-    ]),
-    "sleepy": (3, 12, [
-        ".......n.........n.",
-        "....nnn.......nnn..",
-        "...................",
-        "...................",
-        "...................",
-        "pp...............pp",
-        "pp...............pp",
-        "...................",
-        "........n.n........",
-        ".........n.........",
-    ]),
+    "happy": [
+        (10, 14, ["wn...wn", "nn...nn", "nn...nn"]),      # eyes
+        (12, 17, ["nnn", ".n.", ".n.", "n.n"]),           # nose and a little smile
+    ] + _BLUSH,
+    "cheer": [
+        (9, 14, [".n.....n.", "n.n...n.n"]),             # happy ^ ^ eyes
+        _NOSE,
+        (11, 19, ["nnnnn", "npppn", ".nnn."]),            # open mouth with tongue
+    ] + _BLUSH,
+    "sleepy": [
+        (10, 15, ["nn...nn"]),                            # closed eyes
+        _NOSE,
+        (12, 19, [".n."]),
+    ],
 }
 
-LIDS = (7, 12, [
-    "ll........ll",
-    "nn........nn",
-    "ll........ll",
-])   # shown for a moment to make the happy chow chow blink
+LIDS = (10, 14, ["ll...ll", "ll...ll", "nn...nn"])   # shown for a moment so the happy dog blinks
 
 SPARKLE = [".Y.", "YYY", ".Y."]
 Z_BIG = ["zzzz", "..z.", ".z..", "zzzz"]
@@ -134,17 +112,18 @@ def render_mascot(mood="happy", size=240):
     except (TypeError, ValueError):
         size = 240
 
-    parts = [_group("px-body", BODY), _group("px-face", FACES[mood])]
+    face = "".join(_rects(layer) for layer in FACES[mood])
+    parts = [_group("px-body", BODY), f'<g class="px-face">{face}</g>']
     if mood == "happy":
         parts.append(_group("px-lids", LIDS))
 
     extras = []
     if mood == "cheer":
-        extras.append(_group("px-sparkle", (1, 3, SPARKLE)))
-        extras.append(_group("px-sparkle px-late", (32, 5, SPARKLE)))
+        extras.append(_group("px-sparkle", (0, 0, SPARKLE)))
+        extras.append(_group("px-sparkle px-late", (37, 2, SPARKLE)))
     elif mood == "sleepy":
-        extras.append(_group("px-z", (31, 3, Z_BIG)))
-        extras.append(_group("px-z px-late", (33, 0, Z_SMALL)))
+        extras.append(_group("px-z", (35, 2, Z_BIG)))
+        extras.append(_group("px-z px-late", (39, 0, Z_SMALL)))
 
     width = round(size * WIDTH / HEIGHT)
     return Markup(

@@ -37,6 +37,22 @@
     </div>
   </section>
 
+  <h2>Your nature corner</h2>
+  <section class="scene-row">
+    <figure class="scene-card">
+      {{ pixel_scene('mountain', best_streak) }}
+      <figcaption><strong>Mountain climb</strong><span class="muted small">The flag climbs as your streak grows ({{ best_streak }} days)</span></figcaption>
+    </figure>
+    <figure class="scene-card">
+      {{ pixel_scene('park', percent) }}
+      <figcaption><strong>Flower park</strong><span class="muted small">Flowers bloom as you finish today's habits ({{ percent }}%)</span></figcaption>
+    </figure>
+    <figure class="scene-card">
+      {{ pixel_scene('forest', total_completions) }}
+      <figcaption><strong>Moonlit forest</strong><span class="muted small">A new tree grows every 8 check-ins ({{ total_completions }} so far)</span></figcaption>
+    </figure>
+  </section>
+
   <h2>Today's habits</h2>
   <div class="pill-row">
     <a class="pill {{ 'active' if view == 'all' }}" href="{{ url_for('tracking.dashboard', view='all') }}">All ({{ total_habits }})</a>

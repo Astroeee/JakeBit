@@ -1,4 +1,4 @@
-"""Automated tests for the Habit Tracker.
+"""Automated tests for Jakebit (the habit tracker).
 
 Run them from the project folder with:   pytest
 Every test gets its OWN fresh temporary database (see conftest.py), so the tests
@@ -791,3 +791,20 @@ def test_shared_habits_cannot_use_custom_days(app, make_user):
     response = alice.post("/shared/create", data={"name": "Gym", "category": "Fitness", "frequency": "custom"},
                           follow_redirects=True)
     assert b"daily or weekdays" in response.data
+
+
+def test_dashboard_shows_the_pixel_nature_scenes(make_user):
+    page = make_user("alice").get("/").data
+    assert b"Your nature corner" in page and page.count(b'class="pixel scene"') == 3
+    assert b"Jakebit" in page
+
+
+def test_pixel_scenes_render_and_survive_bad_input():
+    import xml.etree.ElementTree as ET
+    from pixelscenes import render_scene
+    for kind in ("mountain", "park", "forest"):
+        for value in (0, 7, 100, 999):
+            ET.fromstring(str(render_scene(kind, value)))
+    assert "<svg" in str(render_scene("nope", "lots"))
+    # the park blooms more flowers as progress goes up
+    assert str(render_scene("park", 100)) != str(render_scene("park", 0))

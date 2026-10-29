@@ -26,8 +26,10 @@ OPTIONS = {
     "bg": [("plain", "Plain", None), ("dots", "Dots", None), ("gradient", "Gradient", None)],
     "card": [("soft", "Soft shadow", None), ("outline", "Outlined", None), ("flat", "Flat", None)],
     "fur": [
-        ("red", "Red", "#d9822b"),
-        ("cream", "Cream", "#f0d9a8"),
+        ("red", "Golden", "#fdd699"),
+        ("cream", "Cream", "#f3e7cf"),
+        ("rust", "Red", "#c8602a"),
+        ("brown", "Brown", "#8a5a3b"),
         ("black", "Black", "#3f3f4a"),
         ("blue", "Blue", "#8493aa"),
     ],
