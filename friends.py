@@ -1,8 +1,7 @@
-import sqlite3
 from datetime import date, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, g
 from auth import login_required, USERNAME_RE
-from db import get_db
+from db import get_db, IntegrityError
 import ratelimit
 from scores import user_scores
 from tracking import compute_streaks, get_done_dates
@@ -116,7 +115,8 @@ def add_friend():
                 )
                 db.commit()
                 flash(f"Friend request sent to {target['username']}.")
-            except sqlite3.IntegrityError:
+            except IntegrityError:
+                db.rollback()
                 error = "A request between you two already exists."
         elif existing["status"] == "accepted":
             error = "You're already friends."

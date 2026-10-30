@@ -133,16 +133,24 @@ Created at runtime and not committed: `database/database.db`, `uploads/avatars/`
 - All SQL uses parameterized queries.
 - Forms are protected against CSRF, and sessions use HttpOnly, SameSite cookies.
 - Every route checks that the logged-in user owns or is allowed to see the data, which is covered by tests.
-- Profile pictures are decoded, validated, cropped and re-saved as new JPEGs under random names in a folder outside `static`, and only served through a permission-checked route.
+- Profile pictures are decoded, validated, cropped and re-saved as new JPEGs, stored in the database, and only served through a permission-checked route.
 - Secrets come from environment variables and are never committed.
+
+## Deploying on Vercel
+
+The app runs as a Vercel Python function with a PostgreSQL (Neon) database. Locally it still uses SQLite.
+
+1. Import the GitHub repo in Vercel and connect a Neon database (Storage tab). That adds `DATABASE_URL`.
+2. Add the environment variables `SECRET_KEY` (a long random string) and `PRODUCTION=1`.
+3. Create the tables once from your computer: set `DATABASE_URL` to the Neon connection string, then run `flask --app app init-db`.
+4. Redeploy. Static files are served from `public/static`.
+
+Database changes: edit both `schema.sql` and `schema_pg.sql`, add a numbered file to `migrations/` (SQLite) and `migrations_pg/` (Postgres), then run `flask --app app migrate`.
 
 ## Future improvements
 
-- Deploy online with HTTPS
 - Real weekly-habit streak logic (weekly habits currently count like daily ones)
 - Notifications for friend requests and invitations
 - Let a group creator remove members and cancel invitations
 - Password reset and email verification
 - Rate limiting on login and friend requests
-- Database migrations, and PostgreSQL for production
-- Cloud storage for profile pictures

@@ -9,20 +9,21 @@ load_dotenv()  # reads SECRET_KEY etc. from your local .env file
 csrf = CSRFProtect()
 
 def create_app(test_config=None):
-    app = Flask(__name__)
+    # Static files live in public/static: Vercel serves public/ directly, and Flask serves it locally
+    app = Flask(__name__, static_folder="public/static")
     # The secret key signs login cookies. It must come from the environment, never from the code.
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
     app.config["DATABASE"] = os.path.join(app.root_path, "database", "database.db")
+    # On Vercel the database is Postgres (Neon). With no DATABASE_URL we use the local SQLite file.
+    app.config["DATABASE_URL"] = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
-    # Uploaded profile pictures live OUTSIDE the static folder, so they can't be fetched directly
-    app.config["AVATAR_FOLDER"] = os.path.join(app.root_path, "uploads", "avatars")
     app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # reject any request over 5 MB
     # Cookie safety: scripts can't read it, and other sites can't send it along with their requests
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     # When we deploy over HTTPS, set PRODUCTION=1 so the cookie only travels over HTTPS
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("PRODUCTION") == "1"
-    # In production we sit behind PythonAnywhere's load balancer, which puts the real
+    # In production we sit behind a proxy (Vercel / PythonAnywhere) that puts the real
     # visitor address in the X-Real-IP header (used by rate limiting)
     app.config["TRUST_X_REAL_IP"] = os.environ.get("PRODUCTION") == "1"
 
@@ -34,7 +35,8 @@ def create_app(test_config=None):
     if os.environ.get("PRODUCTION") == "1" and app.config["SECRET_KEY"] == "dev-only-change-me":
         raise RuntimeError("Set a real SECRET_KEY in your .env file before running in production.")
 
-    os.makedirs(os.path.dirname(app.config["DATABASE"]), exist_ok=True)
+    if not app.config["DATABASE_URL"]:      # Vercel's disk is read-only, and Postgres needs no folder
+        os.makedirs(os.path.dirname(app.config["DATABASE"]), exist_ok=True)
 
     db.init_app(app)
     csrf.init_app(app)
@@ -94,6 +96,7 @@ def create_app(test_config=None):
     
     return app
 
+# Vercel and `flask --app app run` look for this top-level `app`
 app = create_app()
 
 if __name__ == "__main__":

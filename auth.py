@@ -1,10 +1,9 @@
 import functools
 import re
-import sqlite3
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g
 from werkzeug.security import generate_password_hash, check_password_hash
 import ratelimit
-from db import get_db
+from db import get_db, IntegrityError
 
 bp = Blueprint("auth", __name__)
 
@@ -93,7 +92,8 @@ def register():
                     (username, email, generate_password_hash(password)),
                 )
                 db.commit()
-            except sqlite3.IntegrityError:
+            except IntegrityError:
+                db.rollback()   # Postgres refuses further queries until the failed one is rolled back
                 # The UNIQUE constraints on username/email caught a duplicate
                 error = "That username or email is already taken."
             else:

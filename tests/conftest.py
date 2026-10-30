@@ -5,12 +5,12 @@ from app import create_app
 
 
 def make_test_app(tmp_path, csrf=False):
-    """Build a brand-new app that uses a temporary database and a temporary avatar folder."""
+    """Build a brand-new app that uses a temporary SQLite database."""
     app = create_app({
         "TESTING": True,
         "SECRET_KEY": "test-secret-key",
         "DATABASE": str(tmp_path / "test.db"),
-        "AVATAR_FOLDER": str(tmp_path / "avatars"),
+        "DATABASE_URL": None,       # tests must NEVER touch a real Postgres database, even if .env has one
         "WTF_CSRF_ENABLED": csrf,   # off for most tests so forms are easy to post; one test turns it on
     })
     with app.app_context():

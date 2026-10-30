@@ -114,10 +114,10 @@ def create():
 
     # Nothing is saved until db.commit(), so if anything fails the whole group is discarded
     cur = db.execute(
-        "INSERT INTO shared_habits (name, category, frequency, creator_id) VALUES (?, ?, ?, ?)",
+        "INSERT INTO shared_habits (name, category, frequency, creator_id) VALUES (?, ?, ?, ?) RETURNING id",
         (name, category, frequency, me),
     )
-    shared_id = cur.lastrowid
+    shared_id = cur.fetchone()["id"]
     shared = {"id": shared_id, "name": name, "category": category, "frequency": frequency}
 
     # The creator joins immediately; everyone else is invited

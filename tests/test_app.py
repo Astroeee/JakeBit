@@ -433,8 +433,8 @@ def test_only_the_creator_can_delete_and_the_creator_cannot_leave(app, make_user
 
 # --------------------------------------------------------------- profile pictures
 def avatar_files(app):
-    folder = app.config["AVATAR_FOLDER"]
-    return os.listdir(folder) if os.path.exists(folder) else []
+    """The stored picture(s): one row per user that has a picture."""
+    return query(app, "SELECT data FROM avatar_images")
 
 
 def test_upload_is_resized_to_a_square_jpeg(app, make_user):
@@ -442,7 +442,7 @@ def test_upload_is_resized_to_a_square_jpeg(app, make_user):
     upload(alice, image_file(), "me.png")
     files = avatar_files(app)
     assert len(files) == 1
-    with Image.open(os.path.join(app.config["AVATAR_FOLDER"], files[0])) as saved:
+    with Image.open(io.BytesIO(files[0]["data"])) as saved:
         assert saved.size == (256, 256) and saved.format == "JPEG"
 
 
@@ -460,7 +460,7 @@ def test_files_over_5mb_are_rejected(app, make_user):
     assert avatar_files(app) == []
 
 
-def test_replacing_or_removing_a_picture_deletes_the_old_file(app, make_user):
+def test_replacing_or_removing_a_picture_keeps_only_the_newest(app, make_user):
     alice = make_user("alice")
     upload(alice, image_file(), "one.png")
     upload(alice, image_file(size=(300, 300)), "two.png")
@@ -808,3 +808,21 @@ def test_pixel_scenes_render_and_survive_bad_input():
     assert "<svg" in str(render_scene("nope", "lots"))
     # the park blooms more flowers as progress goes up
     assert str(render_scene("park", 100)) != str(render_scene("park", 0))
+
+
+def test_picture_is_served_from_the_database_and_cached_by_tag(app, make_user):
+    alice = make_user("alice")
+    upload(alice, image_file(), "me.png")
+    uid = query(app, "SELECT id FROM users")[0]["id"]
+    first = alice.get(f"/avatar/{uid}")
+    assert first.mimetype == "image/jpeg" and first.data[:2] == b"\xff\xd8"
+    again = alice.get(f"/avatar/{uid}", headers={"If-None-Match": first.headers["ETag"]})
+    assert again.status_code == 304
+
+
+def test_database_helpers_work_for_both_sqlite_and_postgres():
+    from db import Row, to_pg
+    row = Row((7, "alice"), ["id", "username"])
+    assert row["id"] == 7 and row[1] == "alice" and len(row) == 2 and dict(row) == {"id": 7, "username": "alice"}
+    assert to_pg("SELECT * FROM t WHERE a = ? AND b = ?") == "SELECT * FROM t WHERE a = %s AND b = %s"
+    assert to_pg("SELECT '100%' WHERE a = ?") == "SELECT '100%%' WHERE a = %s"

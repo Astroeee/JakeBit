@@ -1,10 +1,8 @@
-import os
+import io
 import secrets
 from html import escape
-from flask import (Blueprint, Response, abort, current_app, flash, g, redirect,
-                   request, send_from_directory, url_for)
+from flask import Blueprint, Response, flash, g, redirect, request, url_for
 from PIL import Image, ImageOps, UnidentifiedImageError
-from werkzeug.exceptions import NotFound
 from auth import login_required
 from db import get_db
 from friends import are_friends
@@ -43,15 +41,6 @@ def placeholder(letter, color):
         "Cache-Control": "private, no-cache", "X-Content-Type-Options": "nosniff"})
 
 
-def delete_file(filename):
-    """Remove an old avatar file. basename() makes sure we can never leave the avatar folder."""
-    if filename:
-        try:
-            os.remove(os.path.join(current_app.config["AVATAR_FOLDER"], os.path.basename(filename)))
-        except FileNotFoundError:
-            pass
-
-
 @bp.route("/avatar/<int:user_id>")
 @login_required
 def avatar(user_id):
@@ -65,14 +54,14 @@ def avatar(user_id):
         return placeholder("?", "#9ca3af")
 
     if owner["avatar"]:
-        try:
-            response = send_from_directory(
-                current_app.config["AVATAR_FOLDER"], owner["avatar"], mimetype="image/jpeg")
+        image = db.execute("SELECT data FROM avatar_images WHERE user_id = ?", (user_id,)).fetchone()
+        if image is not None:
+            response = Response(bytes(image["data"]), mimetype="image/jpeg")
             response.headers["Cache-Control"] = "private, no-cache"  # always check for a newer picture
             response.headers["X-Content-Type-Options"] = "nosniff"
-            return response
-        except NotFound:
-            pass  # file went missing: fall through to the initial
+            response.set_etag(owner["avatar"])      # the tag changes with every new picture
+            return response.make_conditional(request)
+        # picture missing: fall through to the initial
 
     return placeholder(owner["username"][:1].upper(), PALETTE[user_id % len(PALETTE)])
 
@@ -106,17 +95,19 @@ def upload():
         flash("That file isn't a valid JPG, PNG or WebP picture.")
         return redirect(url_for("settings.settings"))
 
-    # Save a brand-new JPEG under a random name. Re-encoding also strips EXIF/GPS data.
-    folder = current_app.config["AVATAR_FOLDER"]
-    os.makedirs(folder, exist_ok=True)
-    filename = secrets.token_hex(16) + ".jpg"
-    img.save(os.path.join(folder, filename), "JPEG", quality=88, optimize=True)
+    # Save a brand-new JPEG in the database (re-encoding also strips EXIF/GPS data). The users
+    # row keeps a random tag that changes with every picture, so browsers know when to refresh.
+    buffer = io.BytesIO()
+    img.save(buffer, "JPEG", quality=88, optimize=True)
 
     db = get_db()
-    old = g.user["avatar"]
-    db.execute("UPDATE users SET avatar = ? WHERE id = ?", (filename, g.user["id"]))
+    db.execute(
+        "INSERT INTO avatar_images (user_id, data) VALUES (?, ?) "
+        "ON CONFLICT (user_id) DO UPDATE SET data = excluded.data",
+        (g.user["id"], buffer.getvalue()),
+    )
+    db.execute("UPDATE users SET avatar = ? WHERE id = ?", (secrets.token_hex(16), g.user["id"]))
     db.commit()
-    delete_file(old)
     flash("Profile picture updated!")
     return redirect(url_for("settings.settings"))
 
@@ -125,9 +116,8 @@ def upload():
 @login_required
 def remove():
     db = get_db()
-    old = g.user["avatar"]
+    db.execute("DELETE FROM avatar_images WHERE user_id = ?", (g.user["id"],))
     db.execute("UPDATE users SET avatar = NULL WHERE id = ?", (g.user["id"],))
     db.commit()
-    delete_file(old)
     flash("Profile picture removed.")
     return redirect(url_for("settings.settings"))

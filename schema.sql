@@ -1,4 +1,5 @@
 DROP TABLE IF EXISTS rate_events;
+DROP TABLE IF EXISTS avatar_images;
 DROP TABLE IF EXISTS shared_members;
 DROP TABLE IF EXISTS friendships;
 DROP TABLE IF EXISTS habit_completions;
@@ -21,8 +22,14 @@ CREATE TABLE users (
     -- Privacy: what accepted friends are allowed to see (1 = yes, 0 = no)
     show_scores      INTEGER NOT NULL DEFAULT 1,
     show_habit_names INTEGER NOT NULL DEFAULT 0,
-    avatar           TEXT,  -- filename of the uploaded profile picture (NULL = none)
+    avatar           TEXT,  -- random tag that changes with each new picture (NULL = no picture)
     recovery_hash    TEXT   -- hash of the one-time recovery code (NULL = none yet)
+);
+
+-- The profile picture itself (a 256x256 JPEG), kept in the database so it works on any host
+CREATE TABLE avatar_images (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    data    BLOB NOT NULL
 );
 
 -- A habit done together by a pair or group. Each member also gets their own row in `habits`.
