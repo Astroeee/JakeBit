@@ -3,8 +3,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from auth import login_required, USERNAME_RE
 from db import get_db, IntegrityError
 import ratelimit
+from profiles import PROFILE_COLUMNS, build_profile
 from scores import user_scores
-from tracking import compute_streaks, get_done_dates
 
 bp = Blueprint("friends", __name__)
 
@@ -28,7 +28,7 @@ def friends():
 
     # Requests other people sent to me
     incoming = db.execute(
-        "SELECT f.id, u.username FROM friendships f JOIN users u ON u.id = f.requester_id "
+        "SELECT f.id, u.id AS user_id, u.username, u.display_name, u.bio FROM friendships f JOIN users u ON u.id = f.requester_id "
         "WHERE f.addressee_id = ? AND f.status = 'pending' ORDER BY f.created_at",
         (me,),
     ).fetchall()
@@ -42,7 +42,7 @@ def friends():
 
     # My accepted friends. The CASE picks "the other person" whichever side I was on.
     friend_rows = db.execute(
-        "SELECT u.id, u.username, u.show_scores, f.id AS friendship_id "
+        "SELECT u.id, u.username, u.display_name, u.show_scores, f.id AS friendship_id "
         "FROM friendships f "
         "JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END "
         "WHERE f.status = 'accepted' AND (f.requester_id = ? OR f.addressee_id = ?) "
@@ -167,43 +167,49 @@ def remove(friendship_id):
     return redirect(url_for("friends.friends"))
 
 
+@bp.route("/friends/search")
+@login_required
+def search():
+    """Find people by username or display name. Each result shows picture, name and bio,
+    so people with similar usernames are easy to tell apart."""
+    db = get_db()
+    me = g.user["id"]
+    q = request.args.get("q", "").strip()[:30]
+    results, note, relations = [], "", {}
+    if len(q) == 1:
+        note = "Type at least 2 characters."
+    elif q:
+        scope = f"friend-search:{me}"
+        if ratelimit.too_many(db, scope, 30, 60 * 60):
+            note = "You're searching too quickly. Please try again later."
+        else:
+            ratelimit.record(db, scope)
+            # Escape % and _ so they are searched for literally instead of acting as wildcards
+            like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            results = db.execute(
+                "SELECT id, username, display_name, bio, created_at FROM users "
+                "WHERE searchable = 1 AND id <> ? AND (username LIKE ? ESCAPE '\\' OR LOWER(display_name) LIKE LOWER(?) ESCAPE '\\') "
+                "ORDER BY username LIMIT 12",
+                (me, like, like),
+            ).fetchall()
+            for r in db.execute(
+                    "SELECT id, requester_id, addressee_id, status FROM friendships "
+                    "WHERE requester_id = ? OR addressee_id = ?", (me, me)):
+                other = r["addressee_id"] if r["requester_id"] == me else r["requester_id"]
+                relations[other] = r
+            if not results:
+                note = "No one found. People can switch off friend search in their profile settings."
+    return render_template("friend_search.html", q=q, results=results, note=note, relations=relations, me=me)
+
+
 @bp.route("/friends/<username>")
 @login_required
 def profile(username):
     db = get_db()
-    friend = db.execute(
-        "SELECT id, username, show_scores, show_habit_names FROM users WHERE username = ?",
-        (username,),
-    ).fetchone()
+    friend = db.execute(f"SELECT {PROFILE_COLUMNS} FROM users WHERE username = ?", (username,)).fetchone()
 
     # Same 404 whether the user doesn't exist or just isn't your friend,
     # so this page can't be used to probe for accounts
     if friend is None or not are_friends(db, g.user["id"], friend["id"]):
         abort(404)
-
-    today = date.today()
-    scores = user_scores(db, friend["id"], today) if friend["show_scores"] else None
-
-    # Habit names are only loaded if the friend allows it
-    habits = []
-    if friend["show_habit_names"]:
-        rows = db.execute(
-            "SELECT id, name, category, frequency, weekly_target, days_mask FROM habits "
-            "WHERE user_id = ? AND active = 1 ORDER BY created_at",
-            (friend["id"],),
-        ).fetchall()
-        for h in rows:
-            entry = {"name": h["name"], "category": h["category"],
-                     "unit": "w" if h["frequency"] == "weekly" else ""}
-            # Per-habit streaks and dots count as "scores", so they need that switch too
-            if friend["show_scores"]:
-                done = get_done_dates(db, h["id"])
-                entry["current"], entry["longest"] = compute_streaks(
-                    h["frequency"], done, today, h["weekly_target"])
-                entry["week"] = [
-                    {"day": today - timedelta(days=i), "done": (today - timedelta(days=i)) in done}
-                    for i in range(6, -1, -1)
-                ]
-            habits.append(entry)
-
-    return render_template("friend_profile.html", friend=friend, scores=scores, habits=habits)
+    return render_template("profile.html", p=build_profile(db, friend, g.user["id"]), is_me=False)

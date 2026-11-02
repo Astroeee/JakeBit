@@ -40,6 +40,10 @@
       <input type="text" name="username" placeholder="Their username" maxlength="20" required>
       <button type="submit" class="btn-small">Send request</button>
     </form>
+    <form method="get" action="{{ url_for('friends.search') }}" class="inline-form">
+      <input type="search" name="q" placeholder="Or search by name or username" maxlength="30" minlength="2">
+      <button type="submit" class="btn-small">Search</button>
+    </form>
   </section>
 
   {% if incoming %}
@@ -47,7 +51,7 @@
       <h2>Requests for you</h2>
       {% for r in incoming %}
         <div class="friend-row">
-          <strong>{{ r['username'] }}</strong>
+          <div class="person">{{ avatar(r['user_id'], r['username'], 36) }}<span><strong>{{ r['display_name'] or r['username'] }}</strong> <span class="muted small">@{{ r['username'] }}</span>{% if r['bio'] %}<br><span class="muted small">{{ r['bio']|truncate(70) }}</span>{% endif %}</span></div>
           <div class="habit-actions">
             <form method="post" action="{{ url_for('friends.accept', friendship_id=r['id']) }}">
               <button type="submit" class="btn-small">Accept</button>
@@ -79,7 +83,7 @@
     <h2>Your friends ({{ friends|length }})</h2>
     {% for f in friends %}
       <div class="friend-row">
-        <div class="person">{{ avatar(f['id'], f['username'], 36) }}<strong>{{ f['username'] }}</strong></div>
+        <div class="person">{{ avatar(f['id'], f['username'], 36) }}<strong>{{ f['display_name'] or f['username'] }}</strong>{% if f['display_name'] %}<span class="muted small">@{{ f['username'] }}</span>{% endif %}</div>
         <div class="habit-actions">
           <a class="btn-small" href="{{ url_for('friends.profile', username=f['username']) }}">View</a>
           <form method="post" action="{{ url_for('friends.remove', friendship_id=f['friendship_id']) }}"

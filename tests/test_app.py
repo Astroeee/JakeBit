@@ -66,6 +66,12 @@ def befriend(app, requester, addressee, addressee_name):
     addressee.post(f"/friends/{friendship}/accept")
 
 
+def edit_profile(client, **extra):
+    data = {"display_name": "", "bio": "", "accent": "purple", "banner": "mountain", "searchable": "on"}
+    data.update(extra)
+    return client.post("/profile/edit", data=data)
+
+
 def save_settings(client, **extra):
     data = {"theme": "purple", "bg": "plain", "card": "soft", "fur": "red", "mascot_name": "Mochi"}
     data.update(extra)  # checkboxes (show_scores, show_habit_names) only count when included
@@ -473,6 +479,7 @@ def test_replacing_or_removing_a_picture_keeps_only_the_newest(app, make_user):
 def test_pictures_are_only_visible_to_friends_and_yourself(app, make_user):
     alice, bob = make_user("alice"), make_user("bob")
     upload(alice, image_file(), "me.png")
+    edit_profile(alice, searchable="")            # opted out of friend search
     alice_id = user_id(app, "alice")
     assert alice.get(f"/avatar/{alice_id}").mimetype == "image/jpeg"
     assert bob.get(f"/avatar/{alice_id}").mimetype == "image/svg+xml"   # stranger: placeholder only
@@ -826,3 +833,73 @@ def test_database_helpers_work_for_both_sqlite_and_postgres():
     assert row["id"] == 7 and row[1] == "alice" and len(row) == 2 and dict(row) == {"id": 7, "username": "alice"}
     assert to_pg("SELECT * FROM t WHERE a = ? AND b = ?") == "SELECT * FROM t WHERE a = %s AND b = %s"
     assert to_pg("SELECT '100%' WHERE a = ?") == "SELECT '100%%' WHERE a = %s"
+
+
+# --------------------------------------------------------------- profile pages
+PROFILE_COLS = "display_name, bio, profile_accent, profile_banner, profile_widgets"
+
+
+def test_profile_can_be_customised_and_widgets_follow_the_chosen_order(app, make_user):
+    alice = make_user("alice")
+    assert alice.get("/profile").status_code == 200
+    response = edit_profile(alice, display_name="  Ali   Cat ", bio="Gym <b>rat</b>", accent="blue",
+                            banner="forest", widget=["badges", "streak"])
+    assert response.status_code == 302
+    row = query(app, f"SELECT {PROFILE_COLS} FROM users")[0]
+    assert (row["display_name"], row["profile_accent"], row["profile_banner"], row["profile_widgets"]) == \
+        ("Ali Cat", "blue", "forest", "badges,streak")
+    page = alice.get("/profile").data
+    assert b"Ali Cat" in page and b"&lt;b&gt;rat" in page and b"<b>rat" not in page   # bio is escaped
+    assert page.index(b"Achievements") < page.index(b"Streak records")
+    assert b"pw-mascot" not in page                                                   # widget switched off
+
+
+def test_profile_ignores_invalid_choices_and_limits_length(app, make_user):
+    alice = make_user("alice")
+    edit_profile(alice, display_name="x" * 80, bio="y" * 400, accent="evil", banner="../etc",
+                 widget=["hack", "habits", "habits"])
+    row = query(app, f"SELECT {PROFILE_COLS} FROM users")[0]
+    assert len(row["display_name"]) == 30 and len(row["bio"]) == 160
+    assert row["profile_accent"] == "purple" and row["profile_banner"] == "mountain"
+    assert row["profile_widgets"] == "habits"
+
+
+def test_friends_see_the_custom_profile_but_privacy_switches_still_apply(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    befriend(app, alice, bob, "bob")
+    edit_profile(alice, display_name="Ali Cat", widget=["streak", "badges", "habits"])
+    page = bob.get("/friends/alice").data
+    assert b"Ali Cat" in page and b"@alice" in page and b"Streak records" in page
+    save_settings(alice)                                         # scores switched off
+    page = bob.get("/friends/alice").data
+    assert b"Streak records" not in page and b"Achievements" not in page
+    assert b"keeps their scores private" in page
+    own = alice.get("/profile").data                             # the owner still sees everything
+    assert b"Streak records" in own and b"Friends can" in own
+
+
+def test_achievements_unlock_with_check_ins(app, make_user):
+    alice = make_user("alice")
+    add_habit(alice)
+    assert alice.get("/profile").data.count(b"chip locked") == 7
+    complete(alice, habit_id(app))
+    assert alice.get("/profile").data.count(b"chip locked") == 6      # "First check-in" unlocked
+
+
+def test_friend_search_shows_name_bio_and_respects_opt_out(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    edit_profile(alice, display_name="Alice from BJJ", bio="Blue belt")
+    page = bob.get("/friends/search?q=alice").data
+    assert b"Alice from BJJ" in page and b"Blue belt" in page and b"Add friend" in page
+    assert b"Alice from BJJ" in bob.get("/friends/search?q=from bjj").data     # display name, any case
+    assert b"at least 2" in bob.get("/friends/search?q=a").data
+    assert b"Blue belt" not in bob.get("/friends/search?q=%25%25").data         # % is not a wildcard
+    assert b"Add friend" not in alice.get("/friends/search?q=alice").data       # never lists yourself
+    edit_profile(alice, display_name="Alice from BJJ", bio="Blue belt", searchable="")
+    assert b"Blue belt" not in bob.get("/friends/search?q=alice").data
+
+
+def test_scene_banner_is_cropped_to_a_strip():
+    from pixelscenes import render_scene
+    assert "preserveAspectRatio" in str(render_scene("mountain", 3, banner=True))
+    assert "preserveAspectRatio" not in str(render_scene("mountain", 3))

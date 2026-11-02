@@ -17,8 +17,12 @@ PALETTE = ["#7c3aed", "#0284c7", "#ea580c", "#15803d", "#e11d48", "#0f766e", "#b
 
 def can_view_avatar(db, viewer_id, owner_id):
     """You can see your own picture, your accepted friends' pictures,
-    and pictures of people in a shared habit you've both joined."""
+    pictures of people in a shared habit you've both joined,
+    and anyone who allows friend search."""
     if viewer_id == owner_id or are_friends(db, viewer_id, owner_id):
+        return True
+    found = db.execute("SELECT searchable FROM users WHERE id = ?", (owner_id,)).fetchone()
+    if found is not None and found["searchable"]:   # they chose to appear in friend search
         return True
     row = db.execute(
         "SELECT 1 FROM shared_members a JOIN shared_members b ON a.shared_id = b.shared_id "

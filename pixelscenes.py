@@ -164,10 +164,14 @@ def _forest(value):
 _SCENES = {"mountain": _mountain, "park": _park, "forest": _forest}
 
 
-def render_scene(kind="mountain", value=0):
-    """Return the scene as an inline SVG. `value` is the number that scene reacts to (see top)."""
+def render_scene(kind="mountain", value=0, banner=False):
+    """Return the scene as an inline SVG. `value` is the number that scene reacts to (see top).
+    With banner=True the picture fills a wide strip, cropped from the top."""
     try:
         value = max(0, int(value))
     except (TypeError, ValueError):
         value = 0
-    return _SCENES.get(kind, _mountain)(value)
+    svg = _SCENES.get(kind, _mountain)(value)
+    if banner:
+        svg = Markup(str(svg).replace('<svg class="pixel scene"', '<svg class="pixel scene banner" preserveAspectRatio="xMidYMax slice"', 1))
+    return svg

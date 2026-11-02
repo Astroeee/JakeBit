@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ p.name }}{% endblock %}
+{% block content %}
+  {% from "_avatar.html" import avatar %}
+  {% if is_me %}
+    <p class="profile-actions"><a class="btn-small" href="{{ url_for('profiles.edit') }}">Edit profile</a></p>
+  {% else %}
+    <a href="{{ url_for('friends.friends') }}" class="muted">← Back to friends</a>
+  {% endif %}
+
+  <article class="profile" style="--accent: {{ p.accent }};">
+    <div class="profile-banner">
+      {% if p.banner != 'none' %}{{ pixel_scene(p.banner, p.banner_value, banner=True) }}{% endif %}
+    </div>
+    <header class="profile-head">
+      {{ avatar(p.id, p.username, 96) }}
+      <div>
+        <h1>{{ p.name }}</h1>
+        <p class="muted">@{{ p.username }} · Joined {{ p.since }}</p>
+        {% if p.bio %}<p class="profile-bio">{{ p.bio }}</p>{% endif %}
+      </div>
+    </header>
+
+    {% if p.friends_cant_see %}
+      <p class="muted small">Friends can't see your {{ p.friends_cant_see }} (change this in Settings).</p>
+    {% endif %}
+    {% if p.stats_note %}
+      <p class="empty">{{ p.name }} keeps their scores private.</p>
+    {% endif %}
+
+    <section class="profile-grid">
+      {% for key in p.widgets %}
+        {% set s = p.stats %}
+        {% if key == 'mascot' %}
+          <div class="pw pw-mascot" data-fur="{{ p.fur }}">
+            {{ pixel_mascot(p.mood, 170) }}
+            <p><strong>{{ p.mascot_name }}</strong></p>
+          </div>
+        {% elif key == 'streak' and s %}
+          <div class="pw">
+            <h3>Streak records</h3>
+            <div class="pw-big">{{ s.longest }}</div>
+            <p class="muted small">longest streak ever (days)</p>
+            <p class="muted small">Best current streak: <strong>{{ s.streak }}</strong> days</p>
+          </div>
+        {% elif key == 'today' and s %}
+          <div class="pw">
+            <h3>Today</h3>
+            <div class="pw-big">{{ s.today_done }}<span class="pw-of">/{{ s.today_total }}</span></div>
+            <div class="pw-bar"><span style="width: {{ s.today_pct }}%"></span></div>
+            <p class="muted small">habits finished today</p>
+          </div>
+        {% elif key == 'rate' and s %}
+          <div class="pw">
+            <h3>Last 7 days</h3>
+            <div class="pw-big">{{ s.rate }}%</div>
+            <p class="muted small">{{ s.hits }} check-ins</p>
+          </div>
+        {% elif key == 'totals' and s %}
+          <div class="pw">
+            <h3>All-time</h3>
+            <div class="pw-big">{{ s.total }}</div>
+            <p class="muted small">check-ins · {{ s.habit_count }} active habits</p>
+          </div>
+        {% elif key == 'badges' and s %}
+          <div class="pw pw-wide">
+            <h3>Achievements</h3>
+            <div class="chips">
+              {% for b in s.badges %}
+                <span class="chip {{ '' if b.earned else 'locked' }}" title="{{ b.hint }}">{{ '★ ' if b.earned else '🔒 ' }}{{ b.name }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% elif key == 'habits' %}
+          <div class="pw pw-wide">
+            <h3>Habits</h3>
+            {% if p.habits is none %}
+              <p class="muted">{{ p.name }} doesn't share their habit names.</p>
+            {% else %}
+              <div class="habit-grid">
+                {% for h in p.habits %}
+                  <article class="habit-card">
+                    <div class="habit-top">
+                      <span class="tag">{{ h.category }}</span>
+                      {% if s %}<span class="streak">🔥 {{ h.current }}{{ h.unit }}</span>{% endif %}
+                    </div>
+                    <h3>{{ h.name }}</h3>
+                    {% if s %}
+                      <p class="muted small">Longest streak: {{ h.longest }}{{ h.unit }}</p>
+                      <div class="week">
+                        {% for d in h.week %}
+                          <div class="dot-wrap"><div class="dot {{ 'on' if d.done }}"></div><span>{{ d.day.strftime('%a')[:2] }}</span></div>
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                  </article>
+                {% else %}
+                  <p class="muted">No active habits.</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </section>
+  </article>
+{% endblock %}

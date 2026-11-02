@@ -140,11 +140,12 @@ body[data-card="outline"] .habit-card { border-color: var(--purple); }
 body[data-card="outline"] .habit-card.is-done { border-color: var(--green); }
 
 /* ===== Mascot colors ===== */
-body[data-fur="cream"] { --fur: #f3e7cf; --fur-dark: #dfcfa6; --fur-light: #fffaf0; }
-body[data-fur="rust"]  { --fur: #c8602a; --fur-dark: #a04a1c; --fur-light: #e8914f; }
-body[data-fur="brown"] { --fur: #8a5a3b; --fur-dark: #6b4129; --fur-light: #b57d55; }
-body[data-fur="black"] { --fur: #3f3f4a; --fur-dark: #2b2b33; --fur-light: #5a5a68; }
-body[data-fur="blue"]  { --fur: #8493aa; --fur-dark: #66758c; --fur-light: #a9b6c9; }
+[data-fur="red"]   { --fur: #fdd699; --fur-dark: #f7c27a; --fur-light: #fae6c4; }
+[data-fur="cream"] { --fur: #f3e7cf; --fur-dark: #dfcfa6; --fur-light: #fffaf0; }
+[data-fur="rust"]  { --fur: #c8602a; --fur-dark: #a04a1c; --fur-light: #e8914f; }
+[data-fur="brown"] { --fur: #8a5a3b; --fur-dark: #6b4129; --fur-light: #b57d55; }
+[data-fur="black"] { --fur: #3f3f4a; --fur-dark: #2b2b33; --fur-light: #5a5a68; }
+[data-fur="blue"]  { --fur: #8493aa; --fur-dark: #66758c; --fur-light: #a9b6c9; }
 .m-fur { fill: var(--fur); }
 .m-fur-dark { fill: var(--fur-dark); }
 .m-fur-light { fill: var(--fur-light); }
@@ -393,3 +394,41 @@ body[data-theme="amoled"] {
 body[data-card="outline"] .scene-card { border: 2px solid var(--purple); }
 .scene { width: 100%; }
 .scene-card figcaption { display: flex; flex-direction: column; gap: .15rem; padding: .7rem .9rem .9rem; }
+
+/* ===== Profile pages ===== */
+.profile { --accent: var(--purple); margin-top: .6rem; }
+.profile-actions { margin: 0 0 .6rem; }
+.profile-banner { border-radius: var(--radius) var(--radius) 0 0; overflow: hidden; background: var(--accent); height: 150px; }
+.profile-banner svg { width: 100%; height: 150px; display: block; }
+.profile-head { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; padding: 0 1.2rem; margin-top: -44px; position: relative; }
+.profile-head .avatar { border: 4px solid var(--card); background: var(--card); }
+.profile-head h1 { margin: 0; }
+.profile-bio { max-width: 60ch; margin: .4rem 0 0; }
+.profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.2rem; }
+.pw { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1rem 1.2rem; border-top: 5px solid var(--accent); }
+.pw h3 { margin: .1rem 0 .5rem; font-size: .9rem; color: var(--muted); }
+.pw-big { font-size: 2.3rem; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.pw-of { font-size: 1.2rem; color: var(--muted); }
+.pw-wide { grid-column: 1 / -1; }
+.pw-mascot { text-align: center; }
+.pw-bar { height: 10px; background: var(--purple-soft); border-radius: 99px; overflow: hidden; margin: .5rem 0; }
+.pw-bar span { display: block; height: 100%; background: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+.chip { padding: .35rem .75rem; border-radius: 99px; font-size: .8rem; font-weight: 700; background: var(--accent); color: #fff; }
+.chip.locked { background: var(--purple-soft); color: var(--muted); }
+
+/* profile editor */
+.profile-form label { display: block; font-weight: 700; margin: 1rem 0 .35rem; }
+.profile-form input[type="text"], .profile-form textarea, .profile-form select { width: 100%; max-width: 480px; box-sizing: border-box; }
+.swatches { display: flex; flex-wrap: wrap; gap: .6rem; }
+.profile-form .swatch { margin: 0; position: relative; cursor: pointer; }
+.swatch input { position: absolute; opacity: 0; }
+.swatch span { display: block; width: 36px; height: 36px; border-radius: 50%; background: var(--c); }
+.swatch input:checked + span { outline: 3px solid var(--text); outline-offset: 2px; }
+.swatch input:focus-visible + span { outline: 3px solid var(--purple); outline-offset: 2px; }
+.widget-list { display: flex; flex-direction: column; gap: .5rem; max-width: 520px; }
+.widget-row { display: flex; align-items: center; gap: .7rem; padding: .6rem .8rem; border-radius: 12px; background: var(--purple-soft); }
+.widget-row label { flex: 1; margin: 0; font-weight: 400; }
+.profile-form label.check { font-weight: 400; margin-top: 1.2rem; }
+.person-card { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; background: var(--card); padding: 1rem; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: .7rem; }
+.person-info { display: flex; flex-direction: column; gap: .15rem; flex: 1; min-width: 160px; }

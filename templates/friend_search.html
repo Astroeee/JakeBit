@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Find friends{% endblock %}
+{% block content %}
+  {% from "_avatar.html" import avatar %}
+  <a href="{{ url_for('friends.friends') }}" class="muted">← Back to friends</a>
+  <header class="page-header">
+    <h1>Find friends</h1>
+    <form method="get" action="{{ url_for('friends.search') }}" class="inline-form">
+      <input type="search" name="q" value="{{ q }}" placeholder="Name or username" maxlength="30" minlength="2" required>
+      <button type="submit" class="btn-small">Search</button>
+    </form>
+  </header>
+
+  {% if note %}<p class="empty">{{ note }}</p>{% endif %}
+
+  {% for u in results %}
+    {% set rel = relations.get(u['id']) %}
+    <div class="person-card">
+      {{ avatar(u['id'], u['username'], 56) }}
+      <div class="person-info">
+        <strong>{{ u['display_name'] or u['username'] }}</strong>
+        <span class="muted small">@{{ u['username'] }} · Joined {{ u['created_at'][:10] }}</span>
+        {% if u['bio'] %}<span class="small">{{ u['bio']|truncate(100) }}</span>{% endif %}
+      </div>
+      <div class="habit-actions">
+        {% if rel is none %}
+          <form method="post" action="{{ url_for('friends.add_friend') }}">
+            <input type="hidden" name="username" value="{{ u['username'] }}">
+            <button type="submit" class="btn-small">Add friend</button>
+          </form>
+        {% elif rel['status'] == 'accepted' %}
+          <a class="btn-small" href="{{ url_for('friends.profile', username=u['username']) }}">Friends · View</a>
+        {% elif rel['requester_id'] == me %}
+          <span class="muted small">Request sent</span>
+        {% else %}
+          <form method="post" action="{{ url_for('friends.accept', friendship_id=rel['id']) }}">
+            <button type="submit" class="btn-small">Accept request</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% endblock %}

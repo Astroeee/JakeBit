@@ -33,3 +33,14 @@ document.addEventListener("DOMContentLoaded", () => {
     form.appendChild(input);
   });
 });
+
+
+// Profile editor: move a widget row up or down
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-move]");
+  if (!button) return;
+  const row = button.closest(".widget-row");
+  const other = button.dataset.move === "up" ? row.previousElementSibling : row.nextElementSibling;
+  if (!other) return;
+  if (button.dataset.move === "up") other.before(row); else other.after(row);
+});

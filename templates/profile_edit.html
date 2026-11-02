@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Edit profile{% endblock %}
+{% block content %}
+  <a href="{{ url_for('profiles.my_profile') }}" class="muted">← Back to my profile</a>
+  <header class="page-header">
+    <h1>Edit profile</h1>
+    <p class="muted">Make your page yours. Friends see it when they open your profile.</p>
+  </header>
+
+  <form method="post" class="panel profile-form">
+    <label for="display_name">Display name <span class="muted small">(optional, shown next to @{{ user['username'] }})</span></label>
+    <input id="display_name" name="display_name" type="text" maxlength="30" value="{{ user['display_name'] or '' }}">
+
+    <label for="bio">About me <span class="muted small">(up to 160 characters)</span></label>
+    <textarea id="bio" name="bio" rows="3" maxlength="160">{{ user['bio'] }}</textarea>
+
+    <label>Accent colour</label>
+    <div class="swatches">
+      {% for key, hex in accents.items() %}
+        <label class="swatch" title="{{ key|title }}">
+          <input type="radio" name="accent" value="{{ key }}" {{ 'checked' if key == user['profile_accent'] }}>
+          <span style="--c: {{ hex }}"></span>
+        </label>
+      {% endfor %}
+    </div>
+
+    <label for="banner">Banner picture</label>
+    <select id="banner" name="banner">
+      {% for key, name in banners.items() %}
+        <option value="{{ key }}" {{ 'selected' if key == user['profile_banner'] }}>{{ name }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Widgets <span class="muted small">(tick what to show, use the arrows to change the order)</span></label>
+    <div class="widget-list">
+      {% for w in widgets %}
+        <div class="widget-row">
+          <input type="checkbox" name="widget" value="{{ w.key }}" id="w-{{ w.key }}" {{ 'checked' if w.on }}>
+          <label for="w-{{ w.key }}"><strong>{{ w.title }}</strong><br><span class="muted small">{{ w.hint }}</span></label>
+          <button type="button" class="btn-small" data-move="up" aria-label="Move up">↑</button>
+          <button type="button" class="btn-small" data-move="down" aria-label="Move down">↓</button>
+        </div>
+      {% endfor %}
+    </div>
+
+    <label class="check"><input type="checkbox" name="searchable" {{ 'checked' if user['searchable'] }}>
+      Let people find me in friend search (shows my picture, display name and bio)</label>
+    <button type="submit" class="btn-small">Save profile</button>
+  </form>
+{% endblock %}

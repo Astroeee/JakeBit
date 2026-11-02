@@ -15,7 +15,7 @@ def create_app(test_config=None):
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
     app.config["DATABASE"] = os.path.join(app.root_path, "database", "database.db")
     # On Vercel the database is Postgres (Neon). With no DATABASE_URL we use the local SQLite file.
-    app.config["DATABASE_URL"] = os.environ.get("JAKEBIT_DATABASE_URL") or os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
+    app.config["DATABASE_URL"] = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
     app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # reject any request over 5 MB
     # Cookie safety: scripts can't read it, and other sites can't send it along with their requests
@@ -51,6 +51,7 @@ def create_app(test_config=None):
     from settings import bp as settings_bp, get_ui_settings
     from tracking import describe_schedule
     from recovery import bp as recovery_bp
+    from profiles import bp as profiles_bp
     from pixelart import render_mascot
     from pixelscenes import render_scene
     app.register_blueprint(recovery_bp)
@@ -62,6 +63,7 @@ def create_app(test_config=None):
     app.register_blueprint(friends_bp)
     app.register_blueprint(shared_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(profiles_bp)
 
     @app.context_processor
     def inject_ui():
