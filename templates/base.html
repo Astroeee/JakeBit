@@ -1,4 +1,5 @@
 {% from "_avatar.html" import avatar %}
+{% from "_icons.html" import icon %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,49 +7,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Jakebit{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </head>
 <body data-theme="{{ ui.theme }}" data-mode="{{ ui.mode }}" data-bg="{{ ui.bg }}" data-card="{{ ui.card }}" data-fur="{{ ui.fur }}">
   <div class="app">
     <aside class="sidebar">
-      <div class="brand">Jakebit</div>
+      <a class="brand" href="{{ url_for('tracking.dashboard') }}">{{ pixel_mascot('happy', 34) }}<span>Jakebit</span></a>
       <nav>
         {% if g.user %}
-          <a href="{{ url_for('tracking.dashboard') }}" class="{{ 'active' if request.endpoint == 'tracking.dashboard' }}">Dashboard</a>
-          <a href="{{ url_for('habits.habits') }}" class="{{ 'active' if request.endpoint == 'habits.habits' }}">Habits</a>
-          <a href="{{ url_for('tracking.calendar_view') }}" class="{{ 'active' if request.endpoint == 'tracking.calendar_view' }}">Calendar</a>
-          <a href="{{ url_for('stats.statistics') }}" class="{{ 'active' if request.endpoint == 'stats.statistics' }}">Stats</a>
-          <a href="{{ url_for('friends.friends') }}" class="{{ 'active' if request.endpoint in ('friends.friends', 'friends.profile') }}">Friends{% if notify.friends %}<span class="badge">{{ notify.friends }}</span>{% endif %}</a>
-          <a href="{{ url_for('shared.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('shared.') }}">Shared{% if notify.shared %}<span class="badge">{{ notify.shared }}</span>{% endif %}</a>
-          <a href="{{ url_for('profiles.my_profile') }}" class="{{ 'active' if request.endpoint in ('profiles.my_profile', 'profiles.edit') }}">Profile</a>
-          <a href="{{ url_for('settings.settings') }}" class="{{ 'active' if request.endpoint == 'settings.settings' }}">Settings</a>
+          <a href="{{ url_for('tracking.dashboard') }}" class="{{ 'active' if request.endpoint == 'tracking.dashboard' }}">{{ icon('dashboard') }}<span>Dashboard</span></a>
+          <a href="{{ url_for('habits.habits') }}" class="{{ 'active' if request.endpoint in ('habits.habits', 'habits.edit') }}">{{ icon('habits') }}<span>Habits</span></a>
+          <a href="{{ url_for('tracking.calendar_view') }}" class="{{ 'active' if request.endpoint == 'tracking.calendar_view' }}">{{ icon('calendar') }}<span>Calendar</span></a>
+          <a href="{{ url_for('stats.statistics') }}" class="{{ 'active' if request.endpoint == 'stats.statistics' }}">{{ icon('stats') }}<span>Stats</span></a>
+          <a href="{{ url_for('friends.friends') }}" class="{{ 'active' if request.endpoint in ('friends.friends', 'friends.profile', 'friends.search') }}">{{ icon('friends') }}<span>Friends</span>{% if notify.friends %}<span class="badge">{{ notify.friends }}</span>{% endif %}</a>
+          <a href="{{ url_for('shared.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('shared.') }}">{{ icon('shared') }}<span>Shared</span>{% if notify.shared %}<span class="badge">{{ notify.shared }}</span>{% endif %}</a>
+          <a href="{{ url_for('profiles.my_profile') }}" class="{{ 'active' if request.endpoint in ('profiles.my_profile', 'profiles.edit') }}">{{ icon('profile') }}<span>Profile</span></a>
         {% else %}
-          <a href="{{ url_for('auth.login') }}" class="{{ 'active' if request.endpoint == 'auth.login' }}">Log in</a>
-          <a href="{{ url_for('auth.register') }}" class="{{ 'active' if request.endpoint == 'auth.register' }}">Register</a>
+          <a href="{{ url_for('auth.login') }}" class="{{ 'active' if request.endpoint == 'auth.login' }}">{{ icon('login') }}<span>Log in</span></a>
+          <a href="{{ url_for('auth.register') }}" class="{{ 'active' if request.endpoint == 'auth.register' }}">{{ icon('plus') }}<span>Register</span></a>
         {% endif %}
       </nav>
       {% if g.user %}
-        <div class="sidebar-account">
-          <div class="who-row">
-            {{ avatar(g.user['id'], g.user['username'], 36) }}
-            <p class="who">Signed in as <strong>{{ g.user['username'] }}</strong></p>
-          </div>
+        <div class="sidebar-foot">
+          <a href="{{ url_for('settings.settings') }}" class="{{ 'active' if request.endpoint == 'settings.settings' }}">{{ icon('settings') }}<span>Settings</span></a>
           <form method="post" action="{{ url_for('auth.logout') }}">
-            <button type="submit" class="nav-btn">Log out</button>
+            <button type="submit" class="nav-btn">{{ icon('logout') }}<span>Log out</span></button>
           </form>
         </div>
       {% endif %}
     </aside>
-    <main class="content">
-      {% if g.user and not g.user['has_recovery'] and request.endpoint != 'settings.settings' %}
-        <p class="flash">Set up a <a href="{{ url_for('settings.settings') }}">recovery code</a> so you can reset your password if you forget it.</p>
+
+    <div class="main">
+      {% if g.user %}
+        <header class="topbar">
+          <label class="search">
+            {{ icon('search', 20) }}
+            <input type="search" id="site-search" placeholder="Search your habits" autocomplete="off" aria-label="Search your habits">
+          </label>
+          <a class="top-avatar" href="{{ url_for('profiles.my_profile') }}" title="{{ g.user['username'] }}">{{ avatar(g.user['id'], g.user['username'], 46) }}</a>
+        </header>
       {% endif %}
-      {% for message in get_flashed_messages() %}
-        <p class="flash">{{ message }}</p>
-      {% endfor %}
-      {% block content %}{% endblock %}
-    </main>
+      <main class="content">
+        {% if g.user and not g.user['has_recovery'] and request.endpoint != 'settings.settings' %}
+          <p class="flash">Set up a <a href="{{ url_for('settings.settings') }}">recovery code</a> so you can reset your password if you forget it.</p>
+        {% endif %}
+        {% for message in get_flashed_messages() %}
+          <p class="flash">{{ message }}</p>
+        {% endfor %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
   </div>
 </body>
 </html>

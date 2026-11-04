@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Statistics{% endblock %}
 {% block content %}
-  <header class="page-header">
+  {% from "_icons.html" import icon %}
+  <header class="page-title">
     <h1>Statistics</h1>
     <p class="muted">How consistent you've been so far.</p>
   </header>
@@ -9,51 +10,47 @@
   {% if not rows %}
     <p class="empty">No active habits yet. <a href="{{ url_for('habits.habits') }}">Add one first</a>.</p>
   {% else %}
-    <section class="stats-row">
-      <div class="stat-card purple"><span class="stat-label">Completion rate</span><span class="stat-value">{{ overall_rate }}%</span><span class="stat-sub">of what was due</span></div>
-      <div class="stat-card orange"><span class="stat-label">Current streak</span><span class="stat-value">{{ best_current }}</span><span class="stat-sub">days, best daily habit</span></div>
-      <div class="stat-card teal"><span class="stat-label">Longest streak</span><span class="stat-value">{{ best_longest }}</span><span class="stat-sub">days in a row</span></div>
-      <div class="stat-card purple"><span class="stat-label">Total completed days</span><span class="stat-value">{{ total_done }}</span><span class="stat-sub">all habits</span></div>
+    <section class="four-cards">
+      <div class="card sum"><span class="ico ico-blue">{{ icon('progress', 28) }}</span><div><span class="cap">Completion rate</span><b class="c-indigo">{{ overall_rate }}%</b><small class="muted">of what was due</small></div></div>
+      <div class="card sum"><span class="ico ico-yellow">{{ icon('flame', 28) }}</span><div><span class="cap">Current streak</span><b class="c-orange">{{ best_current }}</b><small class="muted">days, best daily habit</small></div></div>
+      <div class="card sum"><span class="ico ico-yellow">{{ icon('trophy', 28) }}</span><div><span class="cap">Longest streak</span><b class="c-green">{{ best_longest }}</b><small class="muted">days in a row</small></div></div>
+      <div class="card sum"><span class="ico ico-blue">{{ icon('check', 28) }}</span><div><span class="cap">Total completed days</span><b class="c-indigo">{{ total_done }}</b><small class="muted">all habits</small></div></div>
     </section>
 
-    <section class="panel">
-      <h2>Last 30 days</h2>
-      <div class="bars">
-        {% for d in chart %}
-          <div class="bar-col" title="{{ d.day.strftime('%b %d') }}: {{ d.done }} of {{ d.required }} habits">
-            <div class="bar" style="height: {{ d.percent }}%"></div>
+    <section class="chart-row">
+      <div class="card">
+        <h2 class="card-title">Habit Progress Over Time</h2>
+        <div class="seg seg-block">
+          <a class="{{ 'active' if span == 'week' }}" href="{{ url_for('stats.statistics', range='week') }}">Weekly</a>
+          <a class="{{ 'active' if span == 'month' }}" href="{{ url_for('stats.statistics', range='month') }}">Monthly</a>
+          <a class="{{ 'active' if span == 'year' }}" href="{{ url_for('stats.statistics', range='year') }}">Yearly</a>
+        </div>
+        {% if chart %}
+          <svg class="line-chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="Completion rate over time">
+            {% for g in chart.grid %}
+              <line x1="{{ chart.left }}" x2="{{ chart.right }}" y1="{{ g.y }}" y2="{{ g.y }}" class="grid"/>
+              <text x="{{ chart.left - 8 }}" y="{{ g.y + 4 }}" class="axis" text-anchor="end">{{ g.label }}</text>
+            {% endfor %}
+            <path d="{{ chart.area }}" class="area"/>
+            <path d="{{ chart.path }}" class="line"/>
+            {% if chart.last %}<circle cx="{{ chart.last.x }}" cy="{{ chart.last.y }}" r="4.5" class="end"/>{% endif %}
+            {% for l in chart.labels %}<text x="{{ l.x }}" y="{{ chart.height - 8 }}" class="axis" text-anchor="middle">{{ l.text }}</text>{% endfor %}
+          </svg>
+        {% endif %}
+        {% if has_weekly %}<p class="muted small">The chart covers daily, weekday and custom-day habits. Weekly habits are measured per week, so they show up in the rates instead.</p>{% endif %}
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Habit Goal Performance</h2>
+        {% for r in ranked %}
+          <div class="hbar" data-search="{{ r.name|lower }}">
+            <span class="hbar-name">{{ r.name }}</span>
+            <span class="hbar-track"><span style="width: {{ r.rate }}%; background: {{ r.color }}"></span></span>
+            <span class="hbar-val">{{ r.rate }}%</span>
           </div>
+          <p class="hbar-sub muted small">Streak {{ r.current }}{{ r.unit }} · Best {{ r.longest }}{{ r.unit }} · {{ r.total }} total</p>
         {% endfor %}
       </div>
-      <div class="bar-labels"><span>{{ chart[0].day.strftime('%b %d') }}</span><span>Today</span></div>
-      {% if has_weekly %}
-        <p class="muted small">This chart covers daily and weekday habits. Weekly habits are measured per week, so they show up in the rates and rankings instead.</p>
-      {% endif %}
     </section>
-
-    <div class="two-col">
-      <section class="panel">
-        <h2>Most consistent</h2>
-        {% for r in most %}
-          <div class="rank-item">
-            <div class="rank-top"><strong>{{ r.name }}</strong><span>{{ r.rate }}%</span></div>
-            <div class="progress"><div class="progress-bar" style="width: {{ r.rate }}%"></div></div>
-            <span class="muted small">Streak {{ r.current }}{{ r.unit }} · Best {{ r.longest }}{{ r.unit }} · {{ r.total }} total</span>
-          </div>
-        {% endfor %}
-      </section>
-      <section class="panel">
-        <h2>Least consistent</h2>
-        {% for r in least %}
-          <div class="rank-item">
-            <div class="rank-top"><strong>{{ r.name }}</strong><span>{{ r.rate }}%</span></div>
-            <div class="progress"><div class="progress-bar" style="width: {{ r.rate }}%"></div></div>
-            <span class="muted small">Streak {{ r.current }}{{ r.unit }} · Best {{ r.longest }}{{ r.unit }} · {{ r.total }} total</span>
-          </div>
-        {% else %}
-          <p class="muted">Add more habits to compare them.</p>
-        {% endfor %}
-      </section>
-    </div>
   {% endif %}
 {% endblock %}

@@ -44,3 +44,20 @@ document.addEventListener("click", (event) => {
   if (!other) return;
   if (button.dataset.move === "up") other.before(row); else other.after(row);
 });
+
+// Greeting follows the visitor's own clock, and the top search box filters what is on the page
+document.addEventListener("DOMContentLoaded", () => {
+  const greeting = document.querySelector("[data-greeting]");
+  if (greeting) {
+    const hour = new Date().getHours();
+    const part = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+    greeting.textContent = `Good ${part}, ${greeting.dataset.name}`;
+  }
+  const search = document.getElementById("site-search");
+  if (search) {
+    search.addEventListener("input", () => {
+      const q = search.value.trim().toLowerCase();
+      document.querySelectorAll("[data-search]").forEach((el) => { el.hidden = q !== "" && !el.dataset.search.includes(q); });
+    });
+  }
+});

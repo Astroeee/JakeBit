@@ -1,103 +1,160 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
+  {% from "_icons.html" import icon %}
   {% from "_mascot.html" import mascot %}
 
-  <header class="page-header">
-    <p class="muted">{{ today.strftime('%A') }}</p>
-    <h1>{{ today.strftime('%B %d, %Y') }}</h1>
-  </header>
-
-  <section class="panel hero">
-    <div class="hero-pet">{{ mascot(mood, 320) }}</div>
-    <div class="hero-info">
-      <p class="hero-name">{{ ui.mascot_name }}</p>
-      <div class="bubble"><p>{{ message }}</p></div>
-      <p class="hero-streak"><span class="hero-flame">🔥</span><strong>{{ best_streak }}</strong> day streak</p>
-      <p class="muted small">Longest ever: {{ best_longest }} days · Today: {{ percent }}% done</p>
-    </div>
-  </section>
-
-  <section class="stats-row">
-    <div class="stat-card purple">
-      <span class="stat-label">Today's progress</span>
-      <span class="stat-value">{{ percent }}%</span>
-      <div class="progress"><div class="progress-bar" style="width: {{ percent }}%"></div></div>
-      <span class="stat-sub">{{ done_today }} of {{ total_habits }} habits done</span>
-    </div>
-    <div class="stat-card orange">
-      <span class="stat-label">Best current streak</span>
-      <span class="stat-value">{{ best_streak }}</span>
-      <span class="stat-sub">days in a row</span>
-    </div>
-    <div class="stat-card teal">
-      <span class="stat-label">Total completions</span>
-      <span class="stat-value">{{ total_completions }}</span>
-      <span class="stat-sub">all habits, all time</span>
-    </div>
-  </section>
-
-  <h2>Your nature corner</h2>
-  <section class="scene-row">
-    <figure class="scene-card">
-      {{ pixel_scene('mountain', best_streak) }}
-      <figcaption><strong>Mountain climb</strong><span class="muted small">The flag climbs as your streak grows ({{ best_streak }} days)</span></figcaption>
-    </figure>
-    <figure class="scene-card">
-      {{ pixel_scene('park', percent) }}
-      <figcaption><strong>Flower park</strong><span class="muted small">Flowers bloom as you finish today's habits ({{ percent }}%)</span></figcaption>
-    </figure>
-    <figure class="scene-card">
-      {{ pixel_scene('forest', total_completions) }}
-      <figcaption><strong>Moonlit forest</strong><span class="muted small">A new tree grows every 8 check-ins ({{ total_completions }} so far)</span></figcaption>
-    </figure>
-  </section>
-
-  <h2>Today's habits</h2>
-  <div class="pill-row">
-    <a class="pill {{ 'active' if view == 'all' }}" href="{{ url_for('tracking.dashboard', view='all') }}">All ({{ total_habits }})</a>
-    <a class="pill {{ 'active' if view == 'todo' }}" href="{{ url_for('tracking.dashboard', view='todo') }}">To do ({{ total_habits - done_today }})</a>
-    <a class="pill {{ 'active' if view == 'done' }}" href="{{ url_for('tracking.dashboard', view='done') }}">Done ({{ done_today }})</a>
-  </div>
-
-  <div class="habit-grid">
-    {% for c in cards %}
-      <article class="habit-card {{ 'is-done' if c.satisfied }}">
-        <div class="habit-top">
-          <span class="tag">{{ c.category }}</span>
-          {% if c.shared_id %}<a class="tag" href="{{ url_for('shared.detail', shared_id=c.shared_id) }}">👥 Shared</a>{% endif %}
-          <span class="streak">🔥 {{ c.current }}{{ c.unit }}</span>
+  <div class="dash">
+    <div class="dash-main">
+      <header class="greeting">
+        <div>
+          <h1 data-greeting data-name="{{ g.user['username'] }}">Hello, {{ g.user['username'] }}</h1>
+          <p class="muted">{{ today.strftime('%A, %B %d, %Y') }}</p>
         </div>
-        <h3>{{ c.name }}</h3>
-        <p class="muted small">{{ c.schedule }}{% if not c.scheduled_today %} · Rest day{% endif %}</p>
-        <p class="muted small">Longest streak: {{ c.longest }}{{ c.unit }} · {{ c.total }} total</p>
-        {% if c.frequency == 'weekly' %}
-          <p class="muted small">This week: {{ c.week_count }} of {{ c.target }}{% if c.week_count >= c.target %} ✓{% endif %}</p>
+        <a class="btn-outline" href="{{ url_for('habits.habits') }}">{{ icon('plus', 18) }}Add Habit</a>
+      </header>
+
+      <section class="tiles">
+        <div class="tile tile-hi"><div class="tile-top"><span class="tile-icon">{{ icon('progress', 24) }}</span><b>{{ percent }}%</b></div><span class="tile-label">Today's progress</span></div>
+        <div class="tile"><div class="tile-top"><span class="tile-icon">{{ icon('bolt', 22) }}</span><b>{{ total_habits }}</b></div><span class="tile-label">Active Habits</span></div>
+        <div class="tile"><div class="tile-top"><span class="tile-icon">{{ icon('check', 24) }}</span><b>{{ done_today }}</b></div><span class="tile-label">Completed</span></div>
+        <div class="tile"><div class="tile-top"><span class="tile-icon">{{ icon('hourglass', 22) }}</span><b>{{ total_habits - done_today }}</b></div><span class="tile-label">Left Today</span></div>
+      </section>
+
+      <section class="card week-card">
+        <div class="week-top">
+          <div class="seg">
+            <a class="active" href="{{ url_for('tracking.dashboard') }}">Week</a>
+            <a href="{{ url_for('tracking.calendar_view') }}">Month</a>
+            <a href="{{ url_for('stats.statistics') }}">Stats</a>
+          </div>
+        </div>
+        <div class="week-nav">
+          <a class="circ" href="{{ url_for('tracking.dashboard', week=prev_week.isoformat(), day=day.isoformat()) }}" aria-label="Previous week">{{ icon('left', 18) }}</a>
+          {% if next_week %}
+            <a class="circ" href="{{ url_for('tracking.dashboard', week=next_week.isoformat(), day=day.isoformat()) }}" aria-label="Next week">{{ icon('right', 18) }}</a>
+          {% else %}
+            <span class="circ disabled">{{ icon('right', 18) }}</span>
+          {% endif %}
+          <h2>{{ week.strftime('%a, %b %d') }} – {{ (week + timedelta(days=6)).strftime('%a, %b %d') }}</h2>
+          {% if week != this_week %}<a class="link" href="{{ url_for('tracking.dashboard', day=day.isoformat()) }}">Current</a>{% endif %}
+        </div>
+        <div class="meter"><span style="width: {{ achieved }}%"></span></div>
+        <div class="meter-meta">
+          <span class="{{ 'up' if change > 0 else 'down' if change < 0 }}">
+            {% if change > 0 %}↑ Up {{ change }}% from the week before{% elif change < 0 %}↓ Down {{ -change }}% from the week before{% else %}Same as the week before{% endif %}
+          </span>
+          <span>{{ achieved }}% achieved</span>
+        </div>
+
+        {% if grid %}
+          <div class="scroll-x">
+            <table class="week-table">
+              <thead>
+                <tr><th></th>
+                  {% for i in range(7) %}{% set d = week + timedelta(days=i) %}<th class="{{ 'is-today' if d == today }}">{{ d.strftime('%a') }}</th>{% endfor %}
+                  <th></th></tr>
+              </thead>
+              <tbody>
+                {% for r in grid %}
+                  <tr data-search="{{ r.h.name|lower }}">
+                    <td class="wname"><i class="pip" style="background: {{ r.h.color }}"></i><span class="wicon">{{ r.h.icon }}</span><span class="wtext">{{ r.h.name }}</span></td>
+                    {% for c in r.cells %}
+                      <td>
+                        {% if c.state in ('future', 'off') %}
+                          <span class="sq {{ c.state }}" style="--c: {{ r.h.color }}"></span>
+                        {% else %}
+                          <form method="post" action="{{ url_for('tracking.toggle', habit_id=r.h.id) }}">
+                            <input type="hidden" name="date" value="{{ c.day.isoformat() }}">
+                            <input type="hidden" name="next" value="{{ next_url }}">
+                            <button type="submit" class="sq {{ c.state }}" style="--c: {{ r.h.color }}" title="{{ c.day.strftime('%a %b %d') }}: click to {{ 'undo' if c.state == 'done' else 'log' }}"></button>
+                          </form>
+                        {% endif %}
+                      </td>
+                    {% endfor %}
+                    <td class="wfrac">{{ r.done }} / {{ r.need }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="empty">No active habits yet. <a href="{{ url_for('habits.habits') }}">Add your first habit</a>.</p>
         {% endif %}
-        <div class="week">
-          {% for d in c.week %}
-            <div class="dot-wrap">
-              <div class="dot {{ 'on' if d.done }}"></div>
-              <span>{{ d.day.strftime('%a')[:2] }}</span>
-            </div>
-          {% endfor %}
+      </section>
+
+      <section class="card hero">
+        <div class="hero-pet">{{ mascot(mood, 320) }}</div>
+        <div class="hero-info">
+          <p class="hero-name">{{ ui.mascot_name }}</p>
+          <div class="bubble"><p>{{ message }}</p></div>
+          <p class="hero-streak"><span class="hero-flame">{{ icon('flame', 34) }}</span><strong>{{ best_streak }}</strong> day streak</p>
+          <p class="muted small">Longest ever: {{ best_longest }} days · Today: {{ percent }}% done</p>
         </div>
-        <form method="post" action="{{ url_for('tracking.toggle', habit_id=c.id) }}">
-          <input type="hidden" name="date" value="{{ today.isoformat() }}">
-          <input type="hidden" name="next" value="{{ url_for('tracking.dashboard', view=view) }}">
-          <button type="submit" class="check-btn">
-            {% if c.done_today %}✓ Done (tap to undo){% else %}Mark as done{% endif %}
-          </button>
-        </form>
-      </article>
-    {% else %}
-      {% if total_habits == 0 %}
-        <p class="empty">No active habits yet. <a href="{{ url_for('habits.habits') }}">Add your first habit</a>.</p>
-      {% elif view == 'done' %}
-        <p class="empty">Nothing done yet today. You've got this!</p>
-      {% else %}
-        <p class="empty">All done for today! 🎉</p>
-      {% endif %}
-    {% endfor %}
+      </section>
+
+      <h2 class="section-title">Your nature corner</h2>
+      <section class="scene-row">
+        <figure class="scene-card">
+          {{ pixel_scene('mountain', best_streak) }}
+          <figcaption><strong>Mountain climb</strong><span class="muted small">The flag climbs as your streak grows ({{ best_streak }} days)</span></figcaption>
+        </figure>
+        <figure class="scene-card">
+          {{ pixel_scene('park', percent) }}
+          <figcaption><strong>Flower park</strong><span class="muted small">Flowers bloom as you finish today's habits ({{ percent }}%)</span></figcaption>
+        </figure>
+        <figure class="scene-card">
+          {{ pixel_scene('forest', total_completions) }}
+          <figcaption><strong>Moonlit forest</strong><span class="muted small">A new tree grows every 8 check-ins ({{ total_completions }} so far)</span></figcaption>
+        </figure>
+      </section>
+    </div>
+
+    <aside class="dash-side">
+      <div class="day-head">
+        <h2>{{ day.strftime('%a, %b %d') }}</h2>
+        <div class="navs">
+          <a class="circ" href="{{ url_for('tracking.dashboard', day=prev_day.isoformat(), week=week.isoformat()) }}" aria-label="Previous day">{{ icon('left', 18) }}</a>
+          {% if next_day %}
+            <a class="circ" href="{{ url_for('tracking.dashboard', day=next_day.isoformat(), week=week.isoformat()) }}" aria-label="Next day">{{ icon('right', 18) }}</a>
+          {% else %}
+            <span class="circ disabled">{{ icon('right', 18) }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="day-panel">
+        {% for it in items %}{% set h = it.h %}
+          <div class="day-item {{ it.state }}" style="--c: {{ h.color }}" data-search="{{ h.name|lower }}">
+            <span class="rail"><i class="pip"></i></span>
+            {% if it.state == 'off' %}
+              <div class="dcard">
+                <div class="dtop"><span class="dname">{{ h.icon }} {{ h.name }}</span>{% if h.current %}<span class="flame">{{ h.current }}{{ h.unit }} {{ icon('flame', 16) }}</span>{% endif %}</div>
+                <p class="dnote">Inactive on {{ day.strftime('%A') }}</p>
+              </div>
+            {% else %}
+              <div class="dcard">
+                <div class="dtop">
+                  <span class="dname">{{ h.icon }} {{ h.name }}</span>
+                  <span class="flame">{% if h.current %}{{ h.current }}{{ h.unit }} {{ icon('flame', 16) }}{% endif %}</span>
+                </div>
+                {% if h.weekly %}<p class="dnote">This week: {{ it.week_count }} of {{ h.target }}{% if it.week_count >= h.target %} ✓{% endif %}</p>{% endif %}
+                {% if h.shared_id %}<a class="dnote" href="{{ url_for('shared.detail', shared_id=h.shared_id) }}">👥 Shared</a>{% endif %}
+                <form method="post" action="{{ url_for('tracking.toggle', habit_id=h.id) }}">
+                  <input type="hidden" name="date" value="{{ day.isoformat() }}">
+                  <input type="hidden" name="next" value="{{ next_url }}">
+                  {% if it.state == 'done' %}
+                    <button type="submit" class="drow"><span>{{ icon('tick', 18) }} Completed</span><span>Undo</span></button>
+                  {% else %}
+                    <button type="submit" class="dbtn">Mark Complete</button>
+                  {% endif %}
+                </form>
+              </div>
+            {% endif %}
+          </div>
+        {% else %}
+          <p class="muted">Your habits for this day will show up here.</p>
+        {% endfor %}
+      </div>
+    </aside>
   </div>
 {% endblock %}

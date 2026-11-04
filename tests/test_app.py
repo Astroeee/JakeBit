@@ -253,11 +253,11 @@ def test_tick_and_untick_a_habit(app, make_user):
     alice = make_user("alice")
     add_habit(alice)
     hid = habit_id(app)
-    assert b"Mark as done" in alice.get("/").data
+    assert b"Mark Complete" in alice.get("/").data
     complete(alice, hid)
-    assert b"tap to undo" in alice.get("/").data
+    assert b"Undo" in alice.get("/").data and b"Mark Complete" not in alice.get("/").data
     complete(alice, hid)
-    assert b"Mark as done" in alice.get("/").data
+    assert b"Mark Complete" in alice.get("/").data
 
 
 def test_can_log_a_past_day_but_not_the_future(app, make_user):
@@ -787,10 +787,10 @@ def test_custom_days_need_at_least_one_valid_day(app, make_user):
 def test_days_off_are_rest_days_on_the_dashboard(app, make_user):
     alice = make_user("alice")
     add_custom(alice, days=[str((date.today().weekday() + 1) % 7)])     # scheduled only for tomorrow's weekday
-    assert b"Rest day" in alice.get("/").data
+    assert b"Inactive on" in alice.get("/").data
     alice.post(f"/habits/{habit_id(app, 'Gym days')}/delete")
     add_custom(alice, name="Today habit", days=[str(date.today().weekday())])
-    assert b"Rest day" not in alice.get("/").data
+    assert b"Inactive on" not in alice.get("/").data
 
 
 def test_shared_habits_cannot_use_custom_days(app, make_user):
@@ -903,3 +903,65 @@ def test_scene_banner_is_cropped_to_a_strip():
     from pixelscenes import render_scene
     assert "preserveAspectRatio" in str(render_scene("mountain", 3, banner=True))
     assert "preserveAspectRatio" not in str(render_scene("mountain", 3))
+
+
+# ----------------------------------------------------- dashboard, month tracker, statistics
+def test_dashboard_week_and_day_navigation_never_shows_the_future(app, make_user):
+    from datetime import timedelta
+    alice = make_user("alice")
+    add_habit(alice)
+    future = (date.today() + timedelta(days=30)).isoformat()
+    page = alice.get(f"/?day={future}&week={future}")
+    assert page.status_code == 200 and date.today().strftime("%a, %b %d").encode() in page.data
+    assert alice.get("/?day=garbage&week=nope").status_code == 200
+    older = (date.today() - timedelta(days=9)).isoformat()
+    assert b"Current" in alice.get(f"/?week={older}").data          # a link back to this week
+
+
+def test_past_days_can_be_logged_from_the_side_panel(app, make_user):
+    from datetime import timedelta
+    alice = make_user("alice")
+    add_habit(alice)
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    alice.post(f"/toggle/{habit_id(app)}", data={"date": yesterday, "next": f"/?day={yesterday}"})
+    assert b"Undo" in alice.get(f"/?day={yesterday}").data
+    assert b"Undo" not in alice.get("/").data                       # today is still open
+
+
+def test_month_tracker_clamps_future_months_and_logs_cells(app, make_user):
+    alice = make_user("alice")
+    assert b"No active habits" in alice.get("/calendar").data
+    add_habit(alice)
+    page = alice.get("/calendar?month=2099-01")
+    assert page.status_code == 200 and date.today().strftime("%B %Y").encode() in page.data
+    assert alice.get("/calendar?month=garbage").status_code == 200
+    alice.post(f"/toggle/{habit_id(app)}", data={"date": TODAY, "next": "/calendar"})
+    assert query(app, "SELECT COUNT(*) AS n FROM habit_completions")[0]["n"] == 1
+
+
+def test_statistics_ranges(app, make_user):
+    alice = make_user("alice")
+    add_habit(alice)
+    complete(alice, habit_id(app))
+    for span in ("week", "month", "year", "bogus"):
+        page = alice.get(f"/statistics?range={span}")
+        assert page.status_code == 200 and b"Habit Progress Over Time" in page.data
+
+
+def test_week_grid_states_and_percentage():
+    from datetime import timedelta
+    from insights import week_grid
+    monday = date(2026, 10, 12)
+    habit = {"id": 1, "weekly": False, "frequency": "weekdays", "days_mask": 127, "target": 1,
+             "created": date(2026, 1, 1), "done": {monday, monday + timedelta(days=1)}}
+    rows, achieved = week_grid([habit], monday, today=monday + timedelta(days=3))
+    states = [c["state"] for c in rows[0]["cells"]]
+    assert states == ["done", "done", "miss", "today", "future", "off", "off"]
+    assert (rows[0]["done"], rows[0]["need"], achieved) == (2, 5, 40)
+
+
+def test_line_chart_is_empty_safe_and_scaled():
+    from insights import line_chart
+    assert line_chart([], [])["path"] == ""
+    chart = line_chart([0, 50, 100], ["a", "b", "c"])
+    assert chart["last"]["y"] < chart["grid"][0]["y"]               # 100% is drawn above 0%

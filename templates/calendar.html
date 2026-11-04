@@ -1,63 +1,107 @@
 {% extends "base.html" %}
 {% block title %}Calendar{% endblock %}
 {% block content %}
-  <header class="page-header">
-    <h1>Calendar</h1>
-    <p class="muted">Click any past day to log a habit you already did. Click again to undo.</p>
-  </header>
+  {% from "_icons.html" import icon %}
+  <h1 class="sr-only">Calendar</h1>
 
   {% if not habits %}
     <p class="empty">No active habits yet. <a href="{{ url_for('habits.habits') }}">Add one first</a>.</p>
   {% else %}
-    <div class="pill-row">
-      {% for h in habits %}
-        <a class="pill {{ 'active' if h.id == selected.id }}"
-           href="{{ url_for('tracking.calendar_view', habit=h.id, month=month_key) }}">{{ h.name }}</a>
-      {% endfor %}
-    </div>
-
-    <section class="cal-card">
-      <div class="cal-header">
-        <a class="cal-nav" href="{{ url_for('tracking.calendar_view', habit=selected.id, month=prev_key) }}">‹</a>
-        <h2>{{ first.strftime('%B %Y') }}</h2>
-        {% if show_next %}
-          <a class="cal-nav" href="{{ url_for('tracking.calendar_view', habit=selected.id, month=next_key) }}">›</a>
-        {% else %}
-          <span class="cal-nav disabled">›</span>
-        {% endif %}
+    <section class="top-row">
+      <div class="card sum-card">
+        <div class="sum"><span class="ico ico-yellow">{{ icon('flame', 30) }}</span>
+          <div><span class="cap">Current streak</span><b class="c-orange">{{ best_current }}<small> days</small></b></div></div>
+        <div class="sum"><span class="ico ico-yellow">{{ icon('trophy', 30) }}</span>
+          <div><span class="cap">Best ever</span><b class="c-green">{{ best_longest }}<small> days</small></b></div></div>
       </div>
-
-      <div class="cal-grid cal-weekdays">
-        {% for n in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}<div>{{ n }}</div>{% endfor %}
+      <div class="card sum-card">
+        <div class="sum"><span class="ico ico-blue">{{ icon('flame', 30) }}</span>
+          <div><span class="cap">Consistency (30 days)</span><b class="c-indigo">{{ consistency }}%</b></div></div>
       </div>
-
-      <div class="cal-grid">
-        {% for row in rows %}{% for cell in row %}
-          {% if cell.status == 'outside' %}
-            <div class="cell outside"></div>
-          {% elif cell.status == 'future' %}
-            <div class="cell future">{{ cell.date.day }}</div>
-          {% else %}
-            <form method="post" action="{{ url_for('tracking.toggle', habit_id=selected.id) }}">
-              <input type="hidden" name="date" value="{{ cell.date.isoformat() }}">
-              <input type="hidden" name="next" value="{{ next_url }}">
-              <button type="submit" class="cell {{ cell.status }}{{ ' today' if cell.date == today }}">{{ cell.date.day }}</button>
-            </form>
-          {% endif %}
-        {% endfor %}{% endfor %}
-      </div>
-
-      <div class="legend">
-        <span><i class="swatch done"></i> Completed</span>
-        <span><i class="swatch missed"></i> Missed</span>
-        <span><i class="swatch none"></i> No tracking</span>
+      <div class="top-actions">
+        <select class="year-select" aria-label="Year" onchange="location.href = this.value">
+          {% for y in years %}<option value="{{ url_for('tracking.calendar_view', month=y.key) }}" {{ 'selected' if y.year == first.year }}>{{ y.year }}</option>{% endfor %}
+        </select>
+        <a class="btn-outline" href="{{ url_for('habits.habits') }}">{{ icon('plus', 18) }}Add Habit</a>
       </div>
     </section>
 
-    <section class="stats-row">
-      <div class="stat-card orange"><span class="stat-label">Current streak</span><span class="stat-value">{{ current }}</span><span class="stat-sub">{{ unit_label }}</span></div>
-      <div class="stat-card purple"><span class="stat-label">Longest streak</span><span class="stat-value">{{ longest }}</span><span class="stat-sub">{{ unit_label }}</span></div>
-      <div class="stat-card teal"><span class="stat-label">Done this month</span><span class="stat-value">{{ month_done }}</span></div>
+    <section class="card tracker-card">
+      <div class="scroll-x">
+        <table class="tracker">
+          <thead>
+            <tr class="row-months">
+              <th class="corner">{{ icon('calendar', 18) }} MONTH</th>
+              <th colspan="{{ days|length + 1 }}">
+                <div class="month-tabs">
+                  {% for m in months %}
+                    {% if m.disabled %}<span class="mtab disabled">{{ m.label }}</span>
+                    {% else %}<a class="mtab {{ 'active' if m.active }}" href="{{ url_for('tracking.calendar_view', month=m.key) }}">{{ m.label }}</a>{% endif %}
+                  {% endfor %}
+                </div>
+              </th>
+            </tr>
+            <tr class="row-days">
+              <th></th>
+              {% for d in days %}<th class="{{ 'is-today' if d == today }}">{{ d.day }}</th>{% endfor %}
+              <th class="total">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr data-search="{{ r.h.name|lower }}">
+                <th class="hname">
+                  <span class="hn-text">{{ r.h.name }} <span class="per">({{ r.h.per_week }})</span></span>
+                  <a class="dots" href="{{ url_for('shared.detail', shared_id=r.h.shared_id) if r.h.shared_id else url_for('habits.edit', habit_id=r.h.id) }}" aria-label="Edit {{ r.h.name }}">{{ icon('dots', 18) }}</a>
+                </th>
+                {% for c in r.cells %}
+                  {% if c.state == 'future' %}
+                    <td><span class="tc future"></span></td>
+                  {% else %}
+                    <td>
+                      <form method="post" action="{{ url_for('tracking.toggle', habit_id=r.h.id) }}">
+                        <input type="hidden" name="date" value="{{ c.day.isoformat() }}">
+                        <input type="hidden" name="next" value="{{ next_url }}">
+                        <button type="submit" class="tc {{ c.state }}" title="{{ r.h.name }}, {{ c.day.strftime('%b %d') }}">
+                          {%- if c.state == 'done' %}{{ icon('tick', 18) }}{% elif c.state == 'miss' %}{{ icon('cross', 18) }}{% elif c.state == 'off' %}{{ icon('ban', 18) }}{% endif -%}
+                        </button>
+                      </form>
+                    </td>
+                  {% endif %}
+                {% endfor %}
+                <td class="total">{{ r.total }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <div class="legend">
+      <span><i class="sw done"></i>Completed</span><span><i class="sw miss"></i>Missed</span>
+      <span><i class="sw future"></i>Future</span><span><i class="sw off"></i>Excluded</span>
+    </div>
+
+    <section class="chart-row">
+      <div class="card">
+        <h2 class="card-title">Habit Goal Performance – {{ first.strftime('%B %Y') }}</h2>
+        {% for r in rows|sort(attribute='rate', reverse=True) %}
+          <div class="hbar" data-search="{{ r.h.name|lower }}">
+            <span class="hbar-name">{{ r.h.name }}</span>
+            <span class="hbar-track"><span style="width: {{ r.rate }}%; background: {{ r.h.color }}"></span></span>
+            <span class="hbar-val">{{ r.rate }}%</span>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="card donut-card">
+        <h2 class="card-title">Month completion</h2>
+        <div class="donut">
+          <svg viewBox="0 0 36 36" aria-hidden="true">
+            <circle cx="18" cy="18" r="15.9155" class="donut-bg"/>
+            <circle cx="18" cy="18" r="15.9155" class="donut-fg" stroke-dasharray="{{ month_rate }} 100" transform="rotate(-90 18 18)"/>
+          </svg>
+          <div class="donut-text"><b>{{ month_rate }}%</b><span>{{ month_got }} / {{ month_need }}</span></div>
+        </div>
+      </div>
     </section>
   {% endif %}
 {% endblock %}

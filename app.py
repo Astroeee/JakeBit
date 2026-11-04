@@ -95,6 +95,7 @@ def create_app(test_config=None):
 
     app.jinja_env.globals["pixel_mascot"] = render_mascot
     app.jinja_env.globals["pixel_scene"] = render_scene
+    app.jinja_env.globals["timedelta"] = timedelta
     
     return app
 

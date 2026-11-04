@@ -151,64 +151,43 @@ def mascot_status(percent, has_habits):
     return "happy", "Nice start! Keep the momentum going."
 
 
+def _parse_day(text, today):
+    """A ?day=YYYY-MM-DD value -> a date that is never in the future (bad input means today)."""
+    try:
+        return min(date.fromisoformat(text or ""), today)
+    except ValueError:
+        return today
+
+
 @bp.route("/")
 @login_required
 def dashboard():
+    from insights import collect, day_items, today_summary, week_grid
     db = get_db()
     today = date.today()
-    this_week = week_start(today)
+    habits = collect(db, g.user["id"], today)
 
-    view = request.args.get("view", "all")
-    if view not in ("all", "todo", "done"):
-        view = "all"
+    day = _parse_day(request.args.get("day"), today)                    # the day shown in the side panel
+    week = week_start(_parse_day(request.args.get("week"), today))      # the week shown in the grid
+    grid, achieved = week_grid(habits, week, today)
+    _, before = week_grid(habits, week - timedelta(days=7), today)
 
-    habits = db.execute(
-        "SELECT id, name, category, frequency, weekly_target, days_mask, shared_id FROM habits "
-        "WHERE user_id = ? AND active = 1 ORDER BY created_at",
-        (g.user["id"],),
-    ).fetchall()
-
-    cards = []
-    for h in habits:
-        done = get_done_dates(db, h["id"])
-        weekly = h["frequency"] == "weekly"
-        current, longest = compute_streaks(h["frequency"], done, today, h["weekly_target"], h["days_mask"])
-        week = []
-        for i in range(6, -1, -1):
-            d = today - timedelta(days=i)
-            week.append({"day": d, "done": d in done})
-        week_count = sum(1 for d in done if d >= this_week) if weekly else 0
-        done_today = today in done
-        scheduled = is_required(h["frequency"], today, h["days_mask"])
-        cards.append({
-            "id": h["id"], "name": h["name"], "category": h["category"], "shared_id": h["shared_id"],
-            "frequency": h["frequency"], "target": h["weekly_target"], "unit": "w" if weekly else "",
-            "schedule": describe_schedule(h["frequency"], h["weekly_target"], h["days_mask"]),
-            "scheduled_today": scheduled,
-            "current": current, "longest": longest, "total": len(done),
-            "week": week, "week_count": week_count, "done_today": done_today,
-            # "satisfied" = nothing left to do today: done, a rest day, or the weekly goal is met
-            "satisfied": done_today or not scheduled or (weekly and week_count >= h["weekly_target"]),
-        })
-
-    done_count = sum(1 for c in cards if c["satisfied"])
-    percent = round(100 * done_count / len(cards)) if cards else 0
-    mood, message = mascot_status(percent, bool(cards))
-
-    if view == "todo":
-        visible = [c for c in cards if not c["satisfied"]]
-    elif view == "done":
-        visible = [c for c in cards if c["satisfied"]]
-    else:
-        visible = cards
-
+    done_count, percent = today_summary(habits, today)
+    mood, message = mascot_status(percent, bool(habits))
+    daily = [h for h in habits if not h["weekly"]]
     return render_template(
         "dashboard.html",
-        today=today, cards=visible, view=view, total_habits=len(cards),
-        done_today=done_count, percent=percent,
-        best_streak=max((c["current"] for c in cards if not c["unit"]), default=0),
-        best_longest=max((c["longest"] for c in cards if not c["unit"]), default=0),
-        total_completions=sum(c["total"] for c in cards),
+        today=today, day=day, week=week, grid=grid, achieved=achieved, change=achieved - before,
+        items=day_items(habits, day),
+        prev_day=day - timedelta(days=1), next_day=day + timedelta(days=1) if day < today else None,
+        prev_week=week - timedelta(days=7),
+        next_week=week + timedelta(days=7) if week < week_start(today) else None,
+        this_week=week_start(today),
+        next_url=url_for("tracking.dashboard", day=day.isoformat(), week=week.isoformat()),
+        total_habits=len(habits), done_today=done_count, percent=percent,
+        best_streak=max((h["current"] for h in daily), default=0),
+        best_longest=max((h["longest"] for h in daily), default=0),
+        total_completions=sum(h["total"] for h in habits),
         mood=mood, message=message,
     )
 
@@ -253,58 +232,64 @@ def toggle(habit_id):
 @bp.route("/calendar")
 @login_required
 def calendar_view():
+    """The month tracker: one row per habit, one column per day. Click a cell to log or undo."""
+    from insights import collect, daily_rates, scheduled
     db = get_db()
     today = date.today()
-    habits = db.execute(
-        "SELECT id, name, created_at, frequency, weekly_target, days_mask FROM habits "
-        "WHERE user_id = ? AND active = 1 ORDER BY name",
-        (g.user["id"],),
-    ).fetchall()
-    if not habits:
-        return render_template("calendar.html", habits=[])
+    habits = collect(db, g.user["id"], today)
 
-    habit_id = request.args.get("habit", type=int)
-    selected = next((h for h in habits if h["id"] == habit_id), habits[0])
     try:
         year, month = map(int, request.args.get("month", "").split("-"))
         first = date(year, month, 1)
     except ValueError:
         first = today.replace(day=1)
+    if first > today.replace(day=1):
+        first = today.replace(day=1)
+    days = [first + timedelta(days=i) for i in range(cal.monthrange(first.year, first.month)[1])]
 
-    done = get_done_dates(db, selected["id"])
-    created = date.fromisoformat(selected["created_at"][:10])
-    weekly = selected["frequency"] == "weekly"
-
-    rows = []
-    for week in cal.Calendar(firstweekday=6).monthdatescalendar(first.year, first.month):
-        row = []
-        for d in week:
-            if d.month != first.month:
-                status = "outside"
+    rows, got_all, need_all = [], 0, 0
+    for h in habits:
+        cells, total, got, need = [], 0, 0, 0
+        for d in days:
+            sched = scheduled(h, d)
+            if d in h["done"]:
+                state = "done"
+                total += 1
             elif d > today:
-                status = "future"
-            elif d in done:
-                status = "done"
-            elif d >= created and not weekly and is_required(selected["frequency"], d, selected["days_mask"]):
-                status = "missed"          # only SCHEDULED days can be missed
+                state = "future"
+            elif h["weekly"]:
+                state = "open"
+            elif sched:
+                state = "miss"
             else:
-                status = "none"
-            row.append({"date": d, "status": status})
-        rows.append(row)
+                state = "off"                    # a day off, or before the habit existed
+            if d <= today and sched and not h["weekly"]:
+                need += 1
+                got += 1 if d in h["done"] else 0
+            cells.append({"day": d, "state": state})
+        rows.append({"h": h, "cells": cells, "total": total, "rate": round(100 * got / need) if need else 0})
+        got_all += got
+        need_all += need
 
-    prev_month = (first - timedelta(days=1)).replace(day=1)
-    next_month = (first + timedelta(days=32)).replace(day=1)
-    current, longest = compute_streaks(
-        selected["frequency"], done, today, selected["weekly_target"], selected["days_mask"])
+    last30 = daily_rates(habits, today - timedelta(days=29), today)
+    due30 = sum(d["required"] for d in last30)
+    daily = [h for h in habits if not h["weekly"]]
+    first_year = min([h["created"].year for h in habits] + [today.year])
+
+    def month_key(y, m):
+        target = date(y, m, 1)
+        return (target if target <= today else today.replace(day=1)).strftime("%Y-%m")
 
     return render_template(
         "calendar.html",
-        habits=habits, selected=selected, rows=rows, first=first, today=today,
-        prev_key=prev_month.strftime("%Y-%m"),
-        next_key=next_month.strftime("%Y-%m"),
-        show_next=next_month <= today.replace(day=1),
-        month_key=first.strftime("%Y-%m"),
-        next_url=url_for("tracking.calendar_view", habit=selected["id"], month=first.strftime("%Y-%m")),
-        current=current, longest=longest, unit_label="weeks" if weekly else "days",
-        month_done=sum(1 for r in rows for c in r if c["status"] == "done"),
+        habits=habits, rows=rows, days=days, first=first, today=today,
+        months=[{"label": date(first.year, m, 1).strftime("%b").upper(), "key": month_key(first.year, m),
+                 "active": m == first.month, "disabled": date(first.year, m, 1) > today} for m in range(1, 13)],
+        years=[{"year": y, "key": month_key(y, first.month)} for y in range(first_year, today.year + 1)],
+        next_url=url_for("tracking.calendar_view", month=first.strftime("%Y-%m")),
+        best_current=max((h["current"] for h in daily), default=0),
+        best_longest=max((h["longest"] for h in daily), default=0),
+        consistency=round(100 * sum(d["done"] for d in last30) / due30) if due30 else 0,
+        month_got=got_all, month_need=need_all,
+        month_rate=round(100 * got_all / need_all) if need_all else 0,
     )

@@ -8,7 +8,7 @@ bp = Blueprint("settings", __name__)
 OPTIONS = {
     "theme": [
         # Light themes
-        ("purple", "Purple", "#7c3aed"),
+        ("purple", "Royal blue", "#2a38b8"),
         ("ocean", "Ocean", "#0284c7"),
         ("sunset", "Sunset", "#ea580c"),
         ("forest", "Forest", "#15803d"),
