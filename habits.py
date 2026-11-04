@@ -7,6 +7,20 @@ bp = Blueprint("habits", __name__)
 
 CATEGORIES = ["Health", "Fitness", "Learning", "Mindfulness", "Productivity", "Other"]
 FREQUENCIES = ["daily", "weekdays", "weekly", "custom"]
+# The logos people can pick for a habit. Only these are accepted, so nothing else can be stored.
+EMOJIS = [
+    "💧", "🥗", "🍎", "💊", "😴", "🏃", "🚴", "🏊", "🧘", "💪", "🏋️", "⚽",
+    "🏀", "🎾", "🥊", "🚶", "📚", "📖", "✏️", "🧠", "🎓", "💻", "🌍", "🗣️",
+    "🎨", "🎵", "🎸", "📝", "⚡", "✅", "📅", "⏰", "💼", "🧹", "💰", "📈",
+    "🎯", "🛏️", "🌱", "🌞", "🌙", "🐶", "📵", "🚭", "☕", "🍳", "🛁", "❤️",
+    "⭐", "🔥",
+]
+
+
+def parse_icon(form):
+    """The chosen emoji logo, or None (= use the category's icon) for anything not on the list."""
+    icon = form.get("icon", "")
+    return icon if icon in EMOJIS else None
 
 
 def validate_habit_form(form):
@@ -51,7 +65,7 @@ def parse_days(form, frequency):
 def get_habit_or_404(db, habit_id):
     """Fetch a habit only if it belongs to the logged-in user, otherwise show a 404."""
     habit = db.execute(
-        "SELECT id, name, category, frequency, weekly_target, days_mask, active, shared_id "
+        "SELECT id, name, category, frequency, weekly_target, days_mask, active, shared_id, icon "
         "FROM habits WHERE id = ? AND user_id = ?",
         (habit_id, g.user["id"]),
     ).fetchone()
@@ -82,21 +96,21 @@ def habits():
             flash(error)
         else:
             db.execute(
-                "INSERT INTO habits (user_id, name, category, frequency, weekly_target, days_mask) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (g.user["id"], name, category, frequency, target, mask),
+                "INSERT INTO habits (user_id, name, category, frequency, weekly_target, days_mask, icon) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (g.user["id"], name, category, frequency, target, mask, parse_icon(request.form)),
             )
             db.commit()
             flash("Habit added!")
             return redirect(url_for("habits.habits"))
 
     rows = db.execute(
-        "SELECT id, name, category, frequency, weekly_target, days_mask, active, shared_id FROM habits "
+        "SELECT id, name, category, frequency, weekly_target, days_mask, active, shared_id, icon FROM habits "
         "WHERE user_id = ? ORDER BY active DESC, created_at DESC",
         (g.user["id"],),
     ).fetchall()
     return render_template(
-        "habits.html", habits=rows, categories=CATEGORIES, frequencies=FREQUENCIES
+        "habits.html", habits=rows, categories=CATEGORIES, frequencies=FREQUENCIES, emojis=EMOJIS
     )
 
 
@@ -119,16 +133,16 @@ def edit(habit_id):
             flash(error)
         else:
             db.execute(
-                "UPDATE habits SET name = ?, category = ?, frequency = ?, weekly_target = ?, days_mask = ? "
+                "UPDATE habits SET name = ?, category = ?, frequency = ?, weekly_target = ?, days_mask = ?, icon = ? "
                 "WHERE id = ? AND user_id = ?",
-                (name, category, frequency, target, mask, habit_id, g.user["id"]),
+                (name, category, frequency, target, mask, parse_icon(request.form), habit_id, g.user["id"]),
             )
             db.commit()
             flash("Habit updated!")
             return redirect(url_for("habits.habits"))
 
     return render_template(
-        "edit_habit.html", habit=habit, categories=CATEGORIES, frequencies=FREQUENCIES,
+        "edit_habit.html", habit=habit, categories=CATEGORIES, frequencies=FREQUENCIES, emojis=EMOJIS,
         selected_days=mask_to_days(habit["days_mask"]),
     )
 

@@ -23,15 +23,15 @@ DEFAULT_WIDGETS = "mascot,streak,today,rate,badges,habits"
 ACCENTS = {"purple": "#7c3aed", "blue": "#0284c7", "teal": "#0f766e", "green": "#15803d",
            "gold": "#b45309", "orange": "#ea580c", "pink": "#db2777", "slate": "#475569"}
 BANNERS = {"mountain": "Mountains", "park": "Flower park", "forest": "Moonlit forest", "none": "Plain colour"}
-# (key, name, how to earn it, stat used, amount needed)
+# (key, symbol, name, how to earn it, stat used, amount needed)
 BADGES = [
-    ("first", "First check-in", "Finish a habit once", "total", 1),
-    ("ten", "10 check-ins", "Finish habits 10 times", "total", 10),
-    ("hundred", "100 check-ins", "Finish habits 100 times", "total", 100),
-    ("week", "7-day streak", "Keep any habit going 7 days", "longest", 7),
-    ("month", "30-day streak", "Keep any habit going 30 days", "longest", 30),
-    ("century", "100-day streak", "Keep any habit going 100 days", "longest", 100),
-    ("collector", "5 habits", "Have 5 active habits", "habit_count", 5),
+    ("first", "🌱", "First check-in", "Finish a habit once", "total", 1),
+    ("ten", "⭐", "10 check-ins", "Finish habits 10 times", "total", 10),
+    ("hundred", "💯", "100 check-ins", "Finish habits 100 times", "total", 100),
+    ("week", "🔥", "7-day streak", "Keep any habit going 7 days", "longest", 7),
+    ("month", "🏆", "30-day streak", "Keep any habit going 30 days", "longest", 30),
+    ("century", "👑", "100-day streak", "Keep any habit going 100 days", "longest", 100),
+    ("collector", "🎯", "5 habits", "Have 5 active habits", "habit_count", 5),
 ]
 PROFILE_COLUMNS = ("id, username, display_name, bio, profile_accent, profile_banner, profile_widgets, "
                    "searchable, show_scores, show_habit_names, fur, mascot_name, created_at")
@@ -70,8 +70,8 @@ def profile_stats(db, user_id, today):
     ).fetchone()[0]
     stats.update(longest=longest, today_total=today_total, today_done=today_done, total=total,
                  today_pct=round(100 * today_done / today_total) if today_total else 0)
-    stats["badges"] = [{"name": n, "hint": hint, "earned": stats[field] >= need}
-                       for _, n, hint, field, need in BADGES]
+    stats["badges"] = [{"symbol": symbol, "name": n, "hint": hint, "earned": stats[field] >= need}
+                       for _, symbol, n, hint, field, need in BADGES]
     return stats
 
 

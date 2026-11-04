@@ -173,5 +173,10 @@ def render_scene(kind="mountain", value=0, banner=False):
         value = 0
     svg = _SCENES.get(kind, _mountain)(value)
     if banner:
-        svg = Markup(str(svg).replace('<svg class="pixel scene"', '<svg class="pixel scene banner" preserveAspectRatio="xMidYMax slice"', 1))
+        text = str(svg)
+        inner = text[text.index(">") + 1:text.rindex("</svg>")]
+        open_tag = text[:text.index(">") + 1].replace(f'viewBox="0 0 {W} {H}"', f'viewBox="0 0 {W * 3} {H}"')
+        open_tag = open_tag.replace('<svg class="pixel scene"', '<svg class="pixel scene banner" preserveAspectRatio="xMidYMax slice"', 1)
+        svg = Markup(f'{open_tag}<g>{inner}</g><g transform="translate({W * 2} 0) scale(-1 1)">{inner}</g>'
+                     f'<g transform="translate({W * 2} 0)">{inner}</g></svg>')
     return svg

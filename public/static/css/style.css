@@ -405,8 +405,9 @@ body[data-card="outline"] .scene-card { border: 2px solid var(--purple); }
 .profile-actions { margin: 0 0 .6rem; }
 .profile-banner { border-radius: var(--radius) var(--radius) 0 0; overflow: hidden; background: var(--accent); height: 150px; }
 .profile-banner svg { width: 100%; height: 150px; display: block; }
-.profile-head { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; padding: 0 1.2rem; margin-top: -44px; position: relative; }
-.profile-head .avatar { border: 4px solid var(--card); background: var(--card); }
+.profile-head { display: flex; gap: 1.1rem; align-items: flex-start; flex-wrap: wrap; padding: 0 1.2rem; position: relative; }
+.profile-head .avatar { border: 4px solid var(--card); background: var(--card); margin-top: -48px; }
+.profile-head > div { padding-top: .8rem; min-width: 0; }   /* the name sits below the banner, never over it */
 .profile-head h1 { margin: 0; }
 .profile-bio { max-width: 60ch; margin: .4rem 0 0; }
 .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.2rem; }
@@ -680,4 +681,38 @@ button.sq:hover { outline: 2px solid var(--c); outline-offset: 1px; }
                                                               width: auto; min-width: 54px; text-align: center; justify-content: center; }
   .badge { margin: 0; position: absolute; transform: translate(14px, -6px); }
   .sidebar nav a { position: relative; }
+}
+
+/* --- Achievement badges with symbols ----------------------------------- */
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: .8rem; }
+.badge-tile { display: flex; flex-direction: column; align-items: center; text-align: center; gap: .15rem; padding: .9rem .6rem;
+              border-radius: 14px; background: color-mix(in srgb, var(--accent) 9%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); }
+.badge-tile .emblem { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; font-size: 1.9rem; margin-bottom: .35rem;
+                      background: var(--card); border: 3px solid var(--accent); box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent); }
+.badge-tile strong { font-size: .9rem; }
+.badge-tile .b-hint { font-size: .74rem; color: var(--muted); line-height: 1.25; }
+.badge-tile.locked { background: var(--grey); border-color: transparent; }
+.badge-tile.locked .emblem { border-color: var(--line); box-shadow: none; filter: grayscale(1); opacity: .45; }
+.badge-tile.locked strong { color: var(--muted); }
+
+/* --- Emoji logo picker -------------------------------------------------- */
+.emoji-picker { position: relative; }
+.emoji-picker summary { list-style: none; display: inline-flex; align-items: center; gap: .55rem; cursor: pointer; padding: .55rem .9rem;
+                        border: 1px solid var(--line); border-radius: 10px; background: var(--card); font-weight: 600; user-select: none; }
+.emoji-picker summary::-webkit-details-marker { display: none; }
+.emoji-picker[open] summary { border-color: var(--purple); }
+.emoji-preview { font-size: 1.4rem; line-height: 1; }
+.emoji-grid { position: absolute; z-index: 20; top: calc(100% + .4rem); right: 0; width: min(380px, 86vw); display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: .3rem; padding: .7rem; background: var(--card);
+              border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(20, 24, 60, .18); }
+.emoji-opt { position: relative; margin: 0; cursor: pointer; }
+.emoji-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.emoji-opt span { display: grid; place-items: center; height: 44px; border-radius: 10px; font-size: 1.5rem; }
+.emoji-opt:hover span { background: var(--purple-soft); }
+.emoji-opt input:checked + span { background: var(--purple-soft); outline: 2px solid var(--purple); }
+.emoji-opt input:focus-visible + span { outline: 2px solid var(--purple); }
+.emoji-opt.auto { grid-column: span 2; }
+.emoji-opt.auto span { font-size: .85rem; font-weight: 700; color: var(--purple); }
+@media (max-width: 700px) {
+  .emoji-grid { position: fixed; left: 6vw; right: 6vw; top: auto; bottom: 5.5rem; width: auto; max-height: 55vh; overflow-y: auto; }
 }

@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Edit habit{% endblock %}
 {% block content %}
-  <h1>Edit habit</h1>
+  {% from "_emoji_picker.html" import emoji_picker %}
+  <header class="page-title"><h1>Edit habit</h1></header>
 
-  <form method="post" class="habit-form">
+  <form method="post" class="habit-form card">
     <input type="text" name="name" value="{{ habit['name'] }}" maxlength="100" required>
     <select name="category">
       {% for c in categories %}
@@ -16,18 +17,19 @@
       {% endfor %}
     </select>
     <label class="weekly-target" data-weekly-target hidden>
-          <fieldset class="day-picker" data-custom-days hidden>
-      {% for name in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
-        <label class="day-chip"><input type="checkbox" name="days" value="{{ loop.index0 }}" {{ 'checked' if selected_days is defined and loop.index0 in selected_days }}><span>{{ name }}</span></label>
-      {% endfor %}
-    </fieldset>
       <select name="weekly_target">
         {% for n in range(1, 8) %}
           <option value="{{ n }}" {{ 'selected' if n == habit['weekly_target'] }}>{{ n }}× per week</option>
         {% endfor %}
       </select>
     </label>
-    <button type="submit">Save changes</button>
+    {{ emoji_picker(emojis, habit['icon']) }}
+    <fieldset class="day-picker" data-custom-days hidden>
+      {% for name in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+        <label class="day-chip"><input type="checkbox" name="days" value="{{ loop.index0 }}" {{ 'checked' if selected_days is defined and loop.index0 in selected_days }}><span>{{ name }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <button type="submit" class="btn-primary">Save changes</button>
     <a class="btn-small" href="{{ url_for('habits.habits') }}">Cancel</a>
   </form>
 

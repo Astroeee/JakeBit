@@ -13,7 +13,7 @@ CATEGORY_ICONS = {"Health": "💧", "Fitness": "💪", "Learning": "📚", "Mind
 def collect(db, user_id, today):
     """One dict per active habit with everything the pages need (colour, streaks, done dates...)."""
     rows = db.execute(
-        "SELECT id, name, category, frequency, weekly_target, days_mask, shared_id, created_at FROM habits "
+        "SELECT id, name, category, frequency, weekly_target, days_mask, shared_id, created_at, icon FROM habits "
         "WHERE user_id = ? AND active = 1 ORDER BY id", (user_id,)).fetchall()
     habits = []
     for i, h in enumerate(rows):
@@ -24,7 +24,7 @@ def collect(db, user_id, today):
                     else bin(h["days_mask"]).count("1") if h["frequency"] == "custom" else 7)
         habits.append({
             "id": h["id"], "name": h["name"], "category": h["category"], "shared_id": h["shared_id"],
-            "icon": CATEGORY_ICONS.get(h["category"], "⭐"), "color": COLORS[i % len(COLORS)],
+            "icon": h["icon"] or CATEGORY_ICONS.get(h["category"], "⭐"), "color": COLORS[i % len(COLORS)],
             "frequency": h["frequency"], "target": h["weekly_target"], "days_mask": h["days_mask"],
             "weekly": weekly, "unit": "w" if weekly else "", "per_week": per_week,
             "created": date.fromisoformat(h["created_at"][:10]), "done": done,

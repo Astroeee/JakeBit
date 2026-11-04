@@ -1,0 +1,12 @@
+{# Emoji logo picker. Use: {{ emoji_picker(emojis, current) }}  (current = the saved emoji or none) #}
+{% macro emoji_picker(emojis, current=none) -%}
+<details class="emoji-picker">
+  <summary><span class="emoji-preview" data-emoji-preview>{{ current or "✨" }}</span><span>{{ "Logo" }}</span></summary>
+  <div class="emoji-grid" role="radiogroup" aria-label="Habit logo">
+    <label class="emoji-opt auto" title="Use the category's icon"><input type="radio" name="icon" value="" {{ 'checked' if not current }}><span>Auto</span></label>
+    {% for e in emojis %}
+      <label class="emoji-opt"><input type="radio" name="icon" value="{{ e }}" {{ 'checked' if e == current }}><span>{{ e }}</span></label>
+    {% endfor %}
+  </div>
+</details>
+{%- endmacro %}

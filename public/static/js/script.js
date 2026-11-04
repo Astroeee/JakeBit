@@ -61,3 +61,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+// Emoji logo picker: show the chosen emoji on the button and close the list
+document.addEventListener("change", (event) => {
+  const radio = event.target.closest(".emoji-picker input[type=radio]");
+  if (!radio) return;
+  const picker = radio.closest(".emoji-picker");
+  picker.querySelector("[data-emoji-preview]").textContent = radio.value || "✨";
+  picker.open = false;
+});

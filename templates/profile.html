@@ -65,9 +65,13 @@
         {% elif key == 'badges' and s %}
           <div class="pw pw-wide">
             <h3>Achievements</h3>
-            <div class="chips">
+            <div class="badge-grid">
               {% for b in s.badges %}
-                <span class="chip {{ '' if b.earned else 'locked' }}" title="{{ b.hint }}">{{ '★ ' if b.earned else '🔒 ' }}{{ b.name }}</span>
+                <div class="badge-tile {{ '' if b.earned else 'locked' }}" title="{{ b.hint }}">
+                  <span class="emblem">{{ b.symbol }}</span>
+                  <strong>{{ b.name }}</strong>
+                  <span class="b-hint">{{ 'Earned!' if b.earned else b.hint }}</span>
+                </div>
               {% endfor %}
             </div>
           </div>

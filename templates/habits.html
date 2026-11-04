@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Habits{% endblock %}
 {% block content %}
+  {% from "_emoji_picker.html" import emoji_picker %}
   {% set icons = {"Health": "💧", "Fitness": "💪", "Learning": "📚", "Mindfulness": "🧘", "Productivity": "⚡", "Other": "⭐"} %}
   <header class="page-title">
     <h1>Habits</h1>
@@ -20,6 +21,7 @@
         {% for n in range(1, 8) %}<option value="{{ n }}">{{ n }}× per week</option>{% endfor %}
       </select>
     </label>
+    {{ emoji_picker(emojis) }}
     <fieldset class="day-picker" data-custom-days hidden>
       {% for name in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
         <label class="day-chip"><input type="checkbox" name="days" value="{{ loop.index0 }}" {{ 'checked' if selected_days is defined and loop.index0 in selected_days }}><span>{{ name }}</span></label>
@@ -31,7 +33,7 @@
   <ul class="habit-list">
     {% for h in habits %}
       <li class="habit-row {{ 'is-paused' if not h['active'] }}" data-search="{{ h['name']|lower }}">
-        <span class="h-icon">{{ icons.get(h['category'], "⭐") }}</span>
+        <span class="h-icon">{{ h['icon'] or icons.get(h['category'], "⭐") }}</span>
         <div class="habit-info">
           <strong>{{ h['name'] }}</strong>
           <span>{{ h['category'] }} · {{ schedule_label(h['frequency'], h['weekly_target'], h['days_mask']) }}{% if h['shared_id'] %} · 👥 Shared{% endif %}{% if not h['active'] %} · Paused{% endif %}</span>

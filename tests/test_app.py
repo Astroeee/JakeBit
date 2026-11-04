@@ -881,9 +881,9 @@ def test_friends_see_the_custom_profile_but_privacy_switches_still_apply(app, ma
 def test_achievements_unlock_with_check_ins(app, make_user):
     alice = make_user("alice")
     add_habit(alice)
-    assert alice.get("/profile").data.count(b"chip locked") == 7
+    assert alice.get("/profile").data.count(b"badge-tile locked") == 7
     complete(alice, habit_id(app))
-    assert alice.get("/profile").data.count(b"chip locked") == 6      # "First check-in" unlocked
+    assert alice.get("/profile").data.count(b"badge-tile locked") == 6   # "First check-in" unlocked
 
 
 def test_friend_search_shows_name_bio_and_respects_opt_out(app, make_user):
@@ -901,7 +901,8 @@ def test_friend_search_shows_name_bio_and_respects_opt_out(app, make_user):
 
 def test_scene_banner_is_cropped_to_a_strip():
     from pixelscenes import render_scene
-    assert "preserveAspectRatio" in str(render_scene("mountain", 3, banner=True))
+    banner = str(render_scene("mountain", 3, banner=True))
+    assert "preserveAspectRatio" in banner and 'viewBox="0 0 144 24"' in banner and "scale(-1 1)" in banner
     assert "preserveAspectRatio" not in str(render_scene("mountain", 3))
 
 
@@ -965,3 +966,30 @@ def test_line_chart_is_empty_safe_and_scaled():
     assert line_chart([], [])["path"] == ""
     chart = line_chart([0, 50, 100], ["a", "b", "c"])
     assert chart["last"]["y"] < chart["grid"][0]["y"]               # 100% is drawn above 0%
+
+
+# ------------------------------------------------------------------ habit emoji logos
+def test_habit_can_get_an_emoji_logo_and_it_shows_up(app, make_user):
+    alice = make_user("alice")
+    alice.post("/habits", data={"name": "Water", "category": "Health", "frequency": "daily", "icon": "🏋️"})
+    assert query(app, "SELECT icon FROM habits")[0]["icon"] == "🏋️"
+    assert "🏋️".encode() in alice.get("/").data and "🏋️".encode() in alice.get("/habits").data
+
+
+def test_unknown_logos_are_ignored_and_auto_uses_the_category_icon(app, make_user):
+    alice = make_user("alice")
+    alice.post("/habits", data={"name": "Water", "category": "Health", "frequency": "daily", "icon": "<script>"})
+    assert query(app, "SELECT icon FROM habits")[0]["icon"] is None
+    assert "💧".encode() in alice.get("/").data                    # the Health category's icon
+
+
+def test_logo_can_be_changed_and_reset_when_editing(app, make_user):
+    alice = make_user("alice")
+    add_habit(alice)
+    hid = habit_id(app)
+    form = {"name": HABIT, "category": "Health", "frequency": "daily"}
+    alice.post(f"/habits/{hid}/edit", data={**form, "icon": "🎸"})
+    assert query(app, "SELECT icon FROM habits")[0]["icon"] == "🎸"
+    assert "value=\"🎸\" checked".encode() in alice.get(f"/habits/{hid}/edit").data      # picker remembers it
+    alice.post(f"/habits/{hid}/edit", data={**form, "icon": ""})
+    assert query(app, "SELECT icon FROM habits")[0]["icon"] is None

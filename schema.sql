@@ -58,6 +58,7 @@ CREATE TABLE habits (
     active     INTEGER NOT NULL DEFAULT 1,
     weekly_target INTEGER NOT NULL DEFAULT 1,
     days_mask     INTEGER NOT NULL DEFAULT 127,   -- which weekdays (Mon = bit 0) when frequency = 'custom'
+    icon          TEXT,                           -- chosen emoji logo (NULL = use the category's icon)
     -- Set when this habit is someone's copy of a shared habit. If the group is deleted,
     -- the habit simply becomes a normal personal habit and keeps its history.
     shared_id  INTEGER REFERENCES shared_habits(id) ON DELETE SET NULL
