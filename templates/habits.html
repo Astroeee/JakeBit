@@ -1,33 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Habits{% endblock %}
 {% block content %}
-  {% from "_emoji_picker.html" import emoji_picker %}
+  {% from "_habit_fields.html" import habit_fields %}
+  {% from "_icons.html" import icon %}
   {% set icons = {"Health": "💧", "Fitness": "💪", "Learning": "📚", "Mindfulness": "🧘", "Productivity": "⚡", "Other": "⭐"} %}
   <header class="page-title">
-    <h1>Habits</h1>
-    <p class="muted">Add, edit, pause or delete your habits.</p>
+    <h1>Let's build a new <span class="accent">habit.</span></h1>
+    <p class="muted">Small steps lead to big changes.</p>
   </header>
 
   <form method="post" class="habit-form card">
-    <input type="text" name="name" placeholder="e.g. Read 20 minutes" maxlength="100" required>
-    <select name="category">
-      {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
-    </select>
-    <select name="frequency">
-      {% for f in frequencies %}<option value="{{ f }}">{{ 'Custom days' if f == 'custom' else f|capitalize }}</option>{% endfor %}
-    </select>
-    <label class="weekly-target" data-weekly-target hidden>
-      <select name="weekly_target">
-        {% for n in range(1, 8) %}<option value="{{ n }}">{{ n }}× per week</option>{% endfor %}
-      </select>
-    </label>
-    {{ emoji_picker(emojis) }}
-    <fieldset class="day-picker" data-custom-days hidden>
-      {% for name in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
-        <label class="day-chip"><input type="checkbox" name="days" value="{{ loop.index0 }}" {{ 'checked' if selected_days is defined and loop.index0 in selected_days }}><span>{{ name }}</span></label>
-      {% endfor %}
-    </fieldset>
-    <button type="submit" class="btn-primary">Add habit</button>
+    {{ habit_fields(categories, frequencies, emojis) }}
+    <button type="submit" class="btn-primary btn-wide">Create Habit {{ icon('right', 18) }}</button>
   </form>
 
   <ul class="habit-list">
@@ -40,6 +24,7 @@
         </div>
         <div class="habit-actions">
           {% if h['shared_id'] %}
+            <a class="btn-small" href="{{ url_for('habits.edit', habit_id=h['id']) }}">Edit</a>
             <a class="btn-small" href="{{ url_for('shared.detail', shared_id=h['shared_id']) }}">View group</a>
           {% else %}
             <a class="btn-small" href="{{ url_for('habits.edit', habit_id=h['id']) }}">Edit</a>

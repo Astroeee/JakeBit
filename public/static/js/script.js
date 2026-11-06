@@ -11,14 +11,19 @@ document.addEventListener("change", (event) => {
   }
 });
 
-function syncWeeklyTarget(form) {
-  const frequency = form.querySelector('select[name="frequency"]');
+// Habit form: show the "times per week" picker for weekly habits and the day chips for custom days
+function syncFrequency(form) {
+  const frequency = form.querySelector('input[name="frequency"]:checked') || form.querySelector('select[name="frequency"]');
   if (!frequency) return;
   const weekly = form.querySelector("[data-weekly-target]");
   const days = form.querySelector("[data-custom-days]");
   if (weekly) weekly.hidden = frequency.value !== "weekly";
   if (days) days.hidden = frequency.value !== "custom";
 }
+document.addEventListener("DOMContentLoaded", () => document.querySelectorAll("form").forEach(syncFrequency));
+document.addEventListener("change", (event) => {
+  if (event.target.name === "frequency") syncFrequency(event.target.closest("form"));
+});
 
 // CSRF protection: the server hands every page a secret token (in a <meta> tag).
 // We add it to each POST form, and the server rejects any form without it.
@@ -51,7 +56,11 @@ document.addEventListener("DOMContentLoaded", () => {
   if (greeting) {
     const hour = new Date().getHours();
     const part = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
-    greeting.textContent = `Good ${part}, ${greeting.dataset.name}`;
+    greeting.textContent = `Good ${part}, `;
+    const name = document.createElement("span");
+    name.className = "accent";
+    name.textContent = greeting.dataset.name;
+    greeting.appendChild(name);
   }
   const search = document.getElementById("site-search");
   if (search) {

@@ -89,12 +89,17 @@ def day_items(habits, day):
     """What the side panel shows for one day: done, still to do, or not scheduled (inactive)."""
     items = []
     for h in habits:
-        week_count = 0
+        ws = week_start(day)
+        week = [ws + timedelta(days=i) for i in range(7)]
         if h["weekly"]:
-            ws = week_start(day)
-            week_count = sum(1 for d in h["done"] if ws <= d <= ws + timedelta(days=6))
+            need = h["target"]
+            got = sum(1 for d in week if d in h["done"])
+        else:
+            need = sum(1 for d in week if scheduled(h, d))
+            got = sum(1 for d in week if d in h["done"] and scheduled(h, d))
         state = "done" if day in h["done"] else ("todo" if scheduled(h, day) else "off")
-        items.append({"h": h, "state": state, "week_count": week_count})
+        items.append({"h": h, "state": state, "week_count": got, "week_done": got, "week_need": need,
+                      "pct": round(100 * min(got, need) / need) if need else 0})
     return items
 
 
@@ -145,26 +150,7 @@ def month_buckets(habits, today, count=12):
     return points
 
 
-def line_chart(values, labels, width=620, height=250):
-    """Turn percentages (0-100) into the SVG pieces of a smooth line chart."""
-    left, right, top, bottom = 44, 14, 14, 34
-    plot_w, plot_h = width - left - right, height - top - bottom
-    n = len(values)
-    xs = [left + (plot_w * i / (n - 1) if n > 1 else plot_w / 2) for i in range(n)]
-    ys = [top + plot_h * (1 - v / 100) for v in values]
-    path = ""
-    for i, (x, y) in enumerate(zip(xs, ys)):
-        if i == 0:
-            path = f"M{x:.1f},{y:.1f}"
-        else:
-            mid = (xs[i - 1] + x) / 2
-            path += f" C{mid:.1f},{ys[i - 1]:.1f} {mid:.1f},{y:.1f} {x:.1f},{y:.1f}"
-    baseline = top + plot_h
-    area = f"{path} L{xs[-1]:.1f},{baseline:.1f} L{xs[0]:.1f},{baseline:.1f} Z" if n else ""
-    step = max(1, n // 7)
-    return {
-        "width": width, "height": height, "path": path, "area": area, "left": left, "right": width - right,
-        "grid": [{"y": top + plot_h * (1 - p / 100), "label": f"{p}%"} for p in (0, 25, 50, 75, 100)],
-        "labels": [{"x": xs[i], "text": labels[i]} for i in range(0, n, step)],
-        "last": {"x": xs[-1], "y": ys[-1]} if n else None,
-    }
+def trend_bars(values, labels, today_index=None):
+    """The capsule bars of the trend chart: each is a percentage (0-100) with a short label."""
+    return [{"percent": v, "label": labels[i], "today": i == today_index, "title": f"{labels[i] or i + 1}: {v}%"}
+            for i, v in enumerate(values)]

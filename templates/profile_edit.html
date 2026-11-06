@@ -18,7 +18,7 @@
     <div class="swatches">
       {% for key, hex in accents.items() %}
         <label class="swatch" title="{{ key|title }}">
-          <input type="radio" name="accent" value="{{ key }}" {{ 'checked' if key == user['profile_accent'] }}>
+          <input type="radio" name="accent" value="{{ key }}" {{ 'checked' if key == accent }}>
           <span style="--c: {{ hex }}"></span>
         </label>
       {% endfor %}

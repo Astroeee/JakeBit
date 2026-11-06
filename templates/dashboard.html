@@ -8,11 +8,21 @@
     <div class="dash-main">
       <header class="greeting">
         <div>
-          <h1 data-greeting data-name="{{ g.user['username'] }}">Hello, {{ g.user['username'] }}</h1>
+          <h1 data-greeting data-name="{{ g.user['username'] }}">Hello, <span class="accent">{{ g.user['username'] }}</span></h1>
           <p class="muted">{{ today.strftime('%A, %B %d, %Y') }}</p>
         </div>
         <a class="btn-outline" href="{{ url_for('habits.habits') }}">{{ icon('plus', 18) }}Add Habit</a>
       </header>
+
+      <section class="streak-card">
+        <div class="streak-text">
+          <span class="streak-chip">{{ icon('flame', 14) }} Current streak</span>
+          <strong class="streak-num">{{ best_streak }}<small> days</small></strong>
+          <p class="streak-msg">{{ message }}</p>
+          <p class="streak-sub">Longest ever: {{ best_longest }} days · Today: {{ percent }}% done</p>
+        </div>
+        <div class="streak-pet">{{ mascot(mood, 150) }}<span>{{ ui.mascot_name }}</span></div>
+      </section>
 
       <section class="tiles">
         <div class="tile tile-hi"><div class="tile-top"><span class="tile-icon">{{ icon('progress', 24) }}</span><b>{{ percent }}%</b></div><span class="tile-label">Today's progress</span></div>
@@ -83,16 +93,6 @@
         {% endif %}
       </section>
 
-      <section class="card hero">
-        <div class="hero-pet">{{ mascot(mood, 320) }}</div>
-        <div class="hero-info">
-          <p class="hero-name">{{ ui.mascot_name }}</p>
-          <div class="bubble"><p>{{ message }}</p></div>
-          <p class="hero-streak"><span class="hero-flame">{{ icon('flame', 34) }}</span><strong>{{ best_streak }}</strong> day streak</p>
-          <p class="muted small">Longest ever: {{ best_longest }} days · Today: {{ percent }}% done</p>
-        </div>
-      </section>
-
       <h2 class="section-title">Your nature corner</h2>
       <section class="scene-row">
         <figure class="scene-card">
@@ -124,36 +124,33 @@
       </div>
       <div class="day-panel">
         {% for it in items %}{% set h = it.h %}
-          <div class="day-item {{ it.state }}" style="--c: {{ h.color }}" data-search="{{ h.name|lower }}">
-            <span class="rail"><i class="pip"></i></span>
-            {% if it.state == 'off' %}
-              <div class="dcard">
-                <div class="dtop"><span class="dname">{{ h.icon }} {{ h.name }}</span>{% if h.current %}<span class="flame">{{ h.current }}{{ h.unit }} {{ icon('flame', 16) }}</span>{% endif %}</div>
-                <p class="dnote">Inactive on {{ day.strftime('%A') }}</p>
+          <div class="day-item {{ it.state }}" data-search="{{ h.name|lower }}">
+            <div class="hrow">
+              <span class="htile">{% if it.state == 'done' %}{{ icon('tick', 24) }}{% else %}{{ h.icon }}{% endif %}</span>
+              <div class="hmain">
+                <span class="dname">{{ h.name }}</span>
+                {% if it.state == 'off' %}
+                  <span class="hsub">Inactive on {{ day.strftime('%A') }}</span>
+                {% else %}
+                  <div class="hbar2"><span style="width: {{ it.pct }}%"></span></div>
+                  <span class="hsub">{% if h.weekly %}This week: {{ it.week_count }} of {{ h.target }}{% if it.week_count >= h.target %} ✓{% endif %}{% else %}{{ it.week_done }}/{{ it.week_need }} this week{% endif %}</span>
+                  {% if h.shared_id %}<a class="hsub" href="{{ url_for('shared.detail', shared_id=h.shared_id) }}">👥 Shared</a>{% endif %}
+                {% endif %}
               </div>
-            {% else %}
-              <div class="dcard">
-                <div class="dtop">
-                  <span class="dname">{{ h.icon }} {{ h.name }}</span>
-                  <span class="flame">{% if h.current %}{{ h.current }}{{ h.unit }} {{ icon('flame', 16) }}{% endif %}</span>
-                </div>
-                {% if h.weekly %}<p class="dnote">This week: {{ it.week_count }} of {{ h.target }}{% if it.week_count >= h.target %} ✓{% endif %}</p>{% endif %}
-                {% if h.shared_id %}<a class="dnote" href="{{ url_for('shared.detail', shared_id=h.shared_id) }}">👥 Shared</a>{% endif %}
+              {% if h.current %}<span class="hstreak">{{ h.current }}{{ h.unit }} {{ icon('flame', 13) }}</span>{% endif %}
+              {% if it.state != 'off' %}
                 <form method="post" action="{{ url_for('tracking.toggle', habit_id=h.id) }}">
                   <input type="hidden" name="date" value="{{ day.isoformat() }}">
                   <input type="hidden" name="next" value="{{ next_url }}">
-                  {% if it.state == 'done' %}
-                    <button type="submit" class="drow"><span>{{ icon('tick', 18) }} Completed</span><span>Undo</span></button>
-                  {% else %}
-                    <button type="submit" class="dbtn">Mark Complete</button>
-                  {% endif %}
+                  <button type="submit" class="hcheck {{ 'on' if it.state == 'done' }}" title="{{ 'Undo' if it.state == 'done' else 'Mark Complete' }}"><span class="sr-only">{{ 'Undo' if it.state == 'done' else 'Mark Complete' }}</span>{{ icon('tick', 20) }}</button>
                 </form>
-              </div>
-            {% endif %}
+              {% endif %}
+            </div>
           </div>
         {% else %}
           <p class="muted">Your habits for this day will show up here.</p>
         {% endfor %}
+        <a class="add-row" href="{{ url_for('habits.habits') }}"><span class="circ">{{ icon('plus', 18) }}</span>New Habit</a>
       </div>
     </aside>
   </div>

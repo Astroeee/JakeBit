@@ -1,0 +1,40 @@
+{# The add/edit habit form fields. Use: {{ habit_fields(categories, frequencies, emojis, habit, selected_days, core) }}
+   core=false (group habits you didn't create): only the logo can be changed. #}
+{% from "_icons.html" import icon %}
+{% from "_emoji_picker.html" import emoji_picker %}
+{% macro habit_fields(categories, frequencies, emojis, habit=none, selected_days=[], core=true) -%}
+  {% set labels = {"daily": ["Daily", "calendar"], "weekdays": ["Weekdays", "habits"], "weekly": ["Weekly", "stats"], "custom": ["Custom", "settings"]} %}
+  {% if core %}
+    <label class="field-label" for="habit-name">Habit name</label>
+    <div class="name-field">{{ icon('habits', 18) }}<input id="habit-name" type="text" name="name" placeholder="e.g., Morning meditation" maxlength="100" required value="{{ habit['name'] if habit else '' }}"></div>
+
+    <span class="field-label">Frequency</span>
+    <div class="freq-tiles">
+      {% for f in frequencies %}
+        <label class="freq-tile"><input type="radio" name="frequency" value="{{ f }}" {{ 'checked' if (habit and habit['frequency'] == f) or (not habit and loop.first) }}><span>{{ icon(labels[f][1], 22) }}{{ labels[f][0] }}</span></label>
+      {% endfor %}
+    </div>
+    <label class="weekly-target" data-weekly-target hidden>
+      <select name="weekly_target">
+        {% for n in range(1, 8) %}<option value="{{ n }}" {{ 'selected' if habit and n == habit['weekly_target'] }}>{{ n }}× per week</option>{% endfor %}
+      </select>
+    </label>
+    <fieldset class="day-picker" data-custom-days hidden>
+      {% for name in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+        <label class="day-chip"><input type="checkbox" name="days" value="{{ loop.index0 }}" {{ 'checked' if loop.index0 in selected_days }}><span>{{ name }}</span></label>
+      {% endfor %}
+    </fieldset>
+
+    <div class="field-row">
+      <label class="field-col"><span class="field-label">Category</span>
+        <select name="category">
+          {% for c in categories %}<option value="{{ c }}" {{ 'selected' if habit and c == habit['category'] }}>{{ c }}</option>{% endfor %}
+        </select>
+      </label>
+      <div class="field-col"><span class="field-label">Logo</span>{{ emoji_picker(emojis, habit['icon'] if habit else none) }}</div>
+    </div>
+  {% else %}
+    <p class="muted">Only the person who created this group habit can change its name and schedule. You can still choose your own logo.</p>
+    <div class="field-col"><span class="field-label">Your logo</span>{{ emoji_picker(emojis, habit['icon'] if habit else none) }}</div>
+  {% endif %}
+{%- endmacro %}

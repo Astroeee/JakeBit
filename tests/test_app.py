@@ -67,13 +67,13 @@ def befriend(app, requester, addressee, addressee_name):
 
 
 def edit_profile(client, **extra):
-    data = {"display_name": "", "bio": "", "accent": "purple", "banner": "mountain", "searchable": "on"}
+    data = {"display_name": "", "bio": "", "accent": "terracotta", "banner": "mountain", "searchable": "on"}
     data.update(extra)
     return client.post("/profile/edit", data=data)
 
 
 def save_settings(client, **extra):
-    data = {"theme": "purple", "bg": "plain", "card": "soft", "fur": "red", "mascot_name": "Mochi"}
+    data = {"theme": "terracotta", "bg": "plain", "card": "soft", "fur": "red", "mascot_name": "Mochi"}
     data.update(extra)  # checkboxes (show_scores, show_habit_names) only count when included
     return client.post("/settings", data=data, follow_redirects=True)
 
@@ -310,14 +310,14 @@ def test_settings_are_saved_per_account(app, make_user):
     alice, bob = make_user("alice"), make_user("bob")
     save_settings(alice, theme="graphite", mascot_name="Biscuit")
     themes = {r["username"]: r["theme"] for r in query(app, "SELECT username, theme FROM users")}
-    assert themes == {"alice": "graphite", "bob": "purple"}
+    assert themes == {"alice": "graphite", "bob": "terracotta"}
 
 
 def test_settings_reject_values_that_are_not_on_the_list(app, make_user):
     alice = make_user("alice")
     assert b"available options" in save_settings(alice, theme="hacker").data
     assert b"1 to 16" in save_settings(alice, mascot_name="x" * 17).data
-    assert query(app, "SELECT theme FROM users")[0]["theme"] == "purple"
+    assert query(app, "SELECT theme FROM users")[0]["theme"] == "terracotta"
 
 
 # ------------------------------------------------------------------------ friends
@@ -860,7 +860,7 @@ def test_profile_ignores_invalid_choices_and_limits_length(app, make_user):
                  widget=["hack", "habits", "habits"])
     row = query(app, f"SELECT {PROFILE_COLS} FROM users")[0]
     assert len(row["display_name"]) == 30 and len(row["bio"]) == 160
-    assert row["profile_accent"] == "purple" and row["profile_banner"] == "mountain"
+    assert row["profile_accent"] == "terracotta" and row["profile_banner"] == "mountain"
     assert row["profile_widgets"] == "habits"
 
 
@@ -946,7 +946,7 @@ def test_statistics_ranges(app, make_user):
     complete(alice, habit_id(app))
     for span in ("week", "month", "year", "bogus"):
         page = alice.get(f"/statistics?range={span}")
-        assert page.status_code == 200 and b"Habit Progress Over Time" in page.data
+        assert page.status_code == 200 and b"Habit Progress Over Time" in page.data and b"ttrack" in page.data
 
 
 def test_week_grid_states_and_percentage():
@@ -961,11 +961,11 @@ def test_week_grid_states_and_percentage():
     assert (rows[0]["done"], rows[0]["need"], achieved) == (2, 5, 40)
 
 
-def test_line_chart_is_empty_safe_and_scaled():
-    from insights import line_chart
-    assert line_chart([], [])["path"] == ""
-    chart = line_chart([0, 50, 100], ["a", "b", "c"])
-    assert chart["last"]["y"] < chart["grid"][0]["y"]               # 100% is drawn above 0%
+def test_trend_bars_carry_percentages_and_mark_today():
+    from insights import trend_bars
+    bars = trend_bars([0, 50, 100], ["MON", "TUE", "WED"], today_index=2)
+    assert [b["percent"] for b in bars] == [0, 50, 100] and [b["today"] for b in bars] == [False, False, True]
+    assert trend_bars([], []) == []
 
 
 # ------------------------------------------------------------------ habit emoji logos
@@ -993,3 +993,60 @@ def test_logo_can_be_changed_and_reset_when_editing(app, make_user):
     assert "value=\"🎸\" checked".encode() in alice.get(f"/habits/{hid}/edit").data      # picker remembers it
     alice.post(f"/habits/{hid}/edit", data={**form, "icon": ""})
     assert query(app, "SELECT icon FROM habits")[0]["icon"] is None
+
+
+def test_retired_themes_show_as_their_closest_replacement(app, make_user):
+    alice = make_user("alice")
+    for old, new in (("forest", "sage"), ("oceannight", "midnight"), ("purple", "terracotta")):
+        with app.app_context():
+            conn = database.get_db()
+            conn.execute("UPDATE users SET theme = ?", (old,))
+            conn.commit()
+        assert f'data-theme="{new}"'.encode() in alice.get("/").data
+
+
+# --------------------------------------------------------------- editing group habits
+def joined_group(app, alice, bob):
+    """alice creates 'Morning run' and bob accepts the invitation, so both have a copy."""
+    sid = make_group(app, alice, bob)
+    bob.post(f"/shared/{sid}/accept")
+    return sid
+
+
+def own_habit(app, username):
+    return query(app, "SELECT id, name, category, frequency, icon FROM habits WHERE user_id = ?", (user_id(app, username),))[0]
+
+
+def test_creator_can_edit_a_group_habit_for_everyone(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    sid = joined_group(app, alice, bob)
+    response = alice.post(f"/habits/{own_habit(app, 'alice')['id']}/edit",
+                          data={"name": "Run at dawn", "category": "Health", "frequency": "weekdays", "icon": "🏃"})
+    assert response.status_code == 302 and f"/shared/{sid}" in response.headers["Location"]
+    assert query(app, "SELECT name, frequency FROM shared_habits")[0]["name"] == "Run at dawn"
+    bobs = own_habit(app, "bob")
+    assert (bobs["name"], bobs["category"], bobs["frequency"], bobs["icon"]) == ("Run at dawn", "Health", "weekdays", None)
+    assert own_habit(app, "alice")["icon"] == "🏃"                 # logos stay personal
+
+
+def test_other_members_can_only_change_their_own_logo(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    joined_group(app, alice, bob)
+    bob.post(f"/habits/{own_habit(app, 'bob')['id']}/edit", data={"name": "Hacked", "frequency": "weekdays", "icon": "🎸"})
+    assert query(app, "SELECT name FROM shared_habits")[0]["name"] == "Morning run"
+    assert own_habit(app, "alice")["name"] == "Morning run"
+    assert (own_habit(app, "bob")["name"], own_habit(app, "bob")["icon"]) == ("Morning run", "🎸")
+
+
+def test_group_habits_cannot_become_weekly_or_custom(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    joined_group(app, alice, bob)
+    alice.post(f"/habits/{own_habit(app, 'alice')['id']}/edit",
+               data={"name": "Morning run", "category": "Fitness", "frequency": "custom", "days": ["0"]})
+    assert query(app, "SELECT frequency FROM shared_habits")[0]["frequency"] == "daily"
+
+
+def test_habit_form_shows_frequency_tiles(app, make_user):
+    alice = make_user("alice")
+    page = alice.get("/habits").data
+    assert b'class="freq-tile"' in page and b"data-weekly-target" in page and b"data-custom-days" in page

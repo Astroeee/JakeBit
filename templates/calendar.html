@@ -87,7 +87,7 @@
         {% for r in rows|sort(attribute='rate', reverse=True) %}
           <div class="hbar" data-search="{{ r.h.name|lower }}">
             <span class="hbar-name">{{ r.h.name }}</span>
-            <span class="hbar-track"><span style="width: {{ r.rate }}%; background: {{ r.h.color }}"></span></span>
+            <span class="hbar-track"><span style="width: {{ r.rate }}%"></span></span>
             <span class="hbar-val">{{ r.rate }}%</span>
           </div>
         {% endfor %}

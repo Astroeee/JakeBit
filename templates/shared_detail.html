@@ -22,6 +22,7 @@
         {% if my_done_today %}✓ You're done today (tap to undo){% else %}Mark my part as done{% endif %}
       </button>
     </form>
+    <p><a class="btn-small" href="{{ url_for('habits.edit', habit_id=my_habit_id) }}">{{ 'Edit group habit' if is_creator else 'Edit my logo' }}</a></p>
   {% endif %}
 
   <h2>Members</h2>

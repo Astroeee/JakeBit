@@ -1,37 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Edit habit{% endblock %}
 {% block content %}
-  {% from "_emoji_picker.html" import emoji_picker %}
-  <header class="page-title"><h1>Edit habit</h1></header>
+  {% from "_habit_fields.html" import habit_fields %}
+  {% from "_icons.html" import icon %}
+  <header class="page-title">
+    <h1>Edit <span class="accent">habit.</span></h1>
+    {% if shared %}<p class="muted">👥 Group habit: changes to the name and schedule apply to everyone in the group.</p>{% endif %}
+  </header>
 
   <form method="post" class="habit-form card">
-    <input type="text" name="name" value="{{ habit['name'] }}" maxlength="100" required>
-    <select name="category">
-      {% for c in categories %}
-        <option value="{{ c }}" {{ 'selected' if c == habit['category'] }}>{{ c }}</option>
-      {% endfor %}
-    </select>
-    <select name="frequency">
-      {% for f in frequencies %}
-        <option value="{{ f }}" {{ 'selected' if f == habit['frequency'] }}>{{ 'Custom days' if f == 'custom' else f|capitalize }}</option>
-      {% endfor %}
-    </select>
-    <label class="weekly-target" data-weekly-target hidden>
-      <select name="weekly_target">
-        {% for n in range(1, 8) %}
-          <option value="{{ n }}" {{ 'selected' if n == habit['weekly_target'] }}>{{ n }}× per week</option>
-        {% endfor %}
-      </select>
-    </label>
-    {{ emoji_picker(emojis, habit['icon']) }}
-    <fieldset class="day-picker" data-custom-days hidden>
-      {% for name in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
-        <label class="day-chip"><input type="checkbox" name="days" value="{{ loop.index0 }}" {{ 'checked' if selected_days is defined and loop.index0 in selected_days }}><span>{{ name }}</span></label>
-      {% endfor %}
-    </fieldset>
-    <button type="submit" class="btn-primary">Save changes</button>
-    <a class="btn-small" href="{{ url_for('habits.habits') }}">Cancel</a>
+    {{ habit_fields(categories, frequencies, emojis, habit, selected_days, can_edit_core) }}
+    <div class="form-actions">
+      <button type="submit" class="btn-primary btn-wide">Save changes {{ icon('right', 18) }}</button>
+      <a class="btn-outline" href="{{ url_for('shared.detail', shared_id=habit['shared_id']) if shared else url_for('habits.habits') }}">Cancel</a>
+    </div>
+    {% if not shared %}<p class="muted small">Changing the frequency also changes how streaks are counted for this habit.</p>{% endif %}
   </form>
-
-  <p class="muted small">Changing the frequency also changes how streaks and rates are worked out for past days.</p>
 {% endblock %}

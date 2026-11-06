@@ -3,18 +3,20 @@
 {% block content %}
   {% from "_icons.html" import icon %}
   <header class="page-title">
-    <h1>Statistics</h1>
+    <h1>Your <span class="accent">progress.</span></h1>
     <p class="muted">How consistent you've been so far.</p>
   </header>
 
   {% if not rows %}
     <p class="empty">No active habits yet. <a href="{{ url_for('habits.habits') }}">Add one first</a>.</p>
   {% else %}
-    <section class="four-cards">
-      <div class="card sum"><span class="ico ico-blue">{{ icon('progress', 28) }}</span><div><span class="cap">Completion rate</span><b class="c-indigo">{{ overall_rate }}%</b><small class="muted">of what was due</small></div></div>
-      <div class="card sum"><span class="ico ico-yellow">{{ icon('flame', 28) }}</span><div><span class="cap">Current streak</span><b class="c-orange">{{ best_current }}</b><small class="muted">days, best daily habit</small></div></div>
-      <div class="card sum"><span class="ico ico-yellow">{{ icon('trophy', 28) }}</span><div><span class="cap">Longest streak</span><b class="c-green">{{ best_longest }}</b><small class="muted">days in a row</small></div></div>
-      <div class="card sum"><span class="ico ico-blue">{{ icon('check', 28) }}</span><div><span class="cap">Total completed days</span><b class="c-indigo">{{ total_done }}</b><small class="muted">all habits</small></div></div>
+    <section class="stats-top">
+      <div class="completion-card"><span class="cap">Completion rate</span><b>{{ overall_rate }}%</b><p>of everything that was due so far. Consistency is key.</p></div>
+      <div class="mini-cards">
+        <div class="card"><span class="ico ico-yellow">{{ icon('flame', 22) }}</span><span class="cap">Current streak</span><b>{{ best_current }} <small class="muted">days</small></b></div>
+        <div class="card"><span class="ico ico-yellow">{{ icon('trophy', 22) }}</span><span class="cap">Longest streak</span><b>{{ best_longest }} <small class="muted">days</small></b></div>
+        <div class="card"><span class="ico ico-blue">{{ icon('check', 22) }}</span><span class="cap">Total completed days</span><b>{{ total_done }}</b></div>
+      </div>
     </section>
 
     <section class="chart-row">
@@ -25,18 +27,11 @@
           <a class="{{ 'active' if span == 'month' }}" href="{{ url_for('stats.statistics', range='month') }}">Monthly</a>
           <a class="{{ 'active' if span == 'year' }}" href="{{ url_for('stats.statistics', range='year') }}">Yearly</a>
         </div>
-        {% if chart %}
-          <svg class="line-chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="Completion rate over time">
-            {% for g in chart.grid %}
-              <line x1="{{ chart.left }}" x2="{{ chart.right }}" y1="{{ g.y }}" y2="{{ g.y }}" class="grid"/>
-              <text x="{{ chart.left - 8 }}" y="{{ g.y + 4 }}" class="axis" text-anchor="end">{{ g.label }}</text>
-            {% endfor %}
-            <path d="{{ chart.area }}" class="area"/>
-            <path d="{{ chart.path }}" class="line"/>
-            {% if chart.last %}<circle cx="{{ chart.last.x }}" cy="{{ chart.last.y }}" r="4.5" class="end"/>{% endif %}
-            {% for l in chart.labels %}<text x="{{ l.x }}" y="{{ chart.height - 8 }}" class="axis" text-anchor="middle">{{ l.text }}</text>{% endfor %}
-          </svg>
-        {% endif %}
+        <div class="trend" role="img" aria-label="Completion rate over time">
+          {% for b in bars %}
+            <div class="tcol {{ 'is-today' if b.today }}" title="{{ b.title }}"><div class="ttrack"><div class="tfill" style="height: {{ b.percent }}%"></div></div><span class="tlabel">{{ b.label }}</span></div>
+          {% endfor %}
+        </div>
         {% if has_weekly %}<p class="muted small">The chart covers daily, weekday and custom-day habits. Weekly habits are measured per week, so they show up in the rates instead.</p>{% endif %}
       </div>
 
@@ -45,7 +40,7 @@
         {% for r in ranked %}
           <div class="hbar" data-search="{{ r.name|lower }}">
             <span class="hbar-name">{{ r.name }}</span>
-            <span class="hbar-track"><span style="width: {{ r.rate }}%; background: {{ r.color }}"></span></span>
+            <span class="hbar-track"><span style="width: {{ r.rate }}%"></span></span>
             <span class="hbar-val">{{ r.rate }}%</span>
           </div>
           <p class="hbar-sub muted small">Streak {{ r.current }}{{ r.unit }} · Best {{ r.longest }}{{ r.unit }} · {{ r.total }} total</p>

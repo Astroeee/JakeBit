@@ -119,30 +119,57 @@ def habits():
 def edit(habit_id):
     db = get_db()
     habit = get_habit_or_404(db, habit_id)
+    me = g.user["id"]
+
+    # A group habit: its creator changes the name and schedule for everyone, and every member
+    # (creator included) can pick their own logo.
+    shared = None
     if habit["shared_id"]:
-        return shared_redirect(habit)
+        shared = db.execute("SELECT id, creator_id FROM shared_habits WHERE id = ?", (habit["shared_id"],)).fetchone()
+    can_edit_core = shared is None or shared["creator_id"] == me
+    group_page = url_for("shared.detail", shared_id=habit["shared_id"]) if shared else None
 
     if request.method == "POST":
+        if not can_edit_core:
+            db.execute("UPDATE habits SET icon = ? WHERE id = ? AND user_id = ?",
+                       (parse_icon(request.form), habit_id, me))
+            db.commit()
+            flash("Logo updated!")
+            return redirect(group_page)
+
         error, name, category, frequency = validate_habit_form(request.form)
         target, mask = 1, 127
-        if error is None:
+        if error is None and shared is not None and frequency not in ("daily", "weekdays"):
+            error = "Shared habits can only be daily or weekdays."
+        if error is None and shared is None:
             error, target = parse_weekly_target(request.form, frequency)
-        if error is None:
+        if error is None and shared is None:
             error, mask = parse_days(request.form, frequency)
         if error:
             flash(error)
+        elif shared is not None:
+            db.execute("UPDATE shared_habits SET name = ?, category = ?, frequency = ? WHERE id = ?",
+                       (name, category, frequency, shared["id"]))
+            db.execute("UPDATE habits SET name = ?, category = ?, frequency = ?, weekly_target = 1, days_mask = 127 "
+                       "WHERE shared_id = ?", (name, category, frequency, shared["id"]))
+            db.execute("UPDATE habits SET icon = ? WHERE id = ? AND user_id = ?",
+                       (parse_icon(request.form), habit_id, me))
+            db.commit()
+            flash("Group habit updated for everyone!")
+            return redirect(group_page)
         else:
             db.execute(
                 "UPDATE habits SET name = ?, category = ?, frequency = ?, weekly_target = ?, days_mask = ?, icon = ? "
                 "WHERE id = ? AND user_id = ?",
-                (name, category, frequency, target, mask, parse_icon(request.form), habit_id, g.user["id"]),
+                (name, category, frequency, target, mask, parse_icon(request.form), habit_id, me),
             )
             db.commit()
             flash("Habit updated!")
             return redirect(url_for("habits.habits"))
 
     return render_template(
-        "edit_habit.html", habit=habit, categories=CATEGORIES, frequencies=FREQUENCIES, emojis=EMOJIS,
+        "edit_habit.html", habit=habit, categories=CATEGORIES, emojis=EMOJIS, shared=shared,
+        frequencies=["daily", "weekdays"] if shared else FREQUENCIES, can_edit_core=can_edit_core,
         selected_days=mask_to_days(habit["days_mask"]),
     )
 

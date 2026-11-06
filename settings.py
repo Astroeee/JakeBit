@@ -8,20 +8,15 @@ bp = Blueprint("settings", __name__)
 OPTIONS = {
     "theme": [
         # Light themes
-        ("purple", "Royal blue", "#2a38b8"),
-        ("ocean", "Ocean", "#0284c7"),
-        ("sunset", "Sunset", "#ea580c"),
-        ("forest", "Forest", "#15803d"),
-        ("rose", "Rose", "#e11d48"),
-        ("mint", "Mint", "#0f766e"),
-        ("sand", "Sand", "#b45309"),
+        ("terracotta", "Terracotta", "#c32f0c"),
+        ("ocean", "Ocean", "#1f5fd6"),
+        ("sage", "Sage", "#2f7a58"),
+        ("sand", "Sand", "#a8661a"),
+        ("mono", "Mono", "#1c1c1e"),
         # Dark themes
-        ("midnight", "Midnight", "#8b5cf6"),
-        ("oceannight", "Ocean Night", "#38bdf8"),
-        ("forestnight", "Forest Night", "#4ade80"),
-        ("ember", "Ember", "#fb7185"),
-        ("graphite", "Graphite", "#60a5fa"),
-        ("amoled", "Amoled Black", "#c4b5fd"),
+        ("graphite", "Graphite", "#ff7d5c"),
+        ("midnight", "Midnight", "#6ea8ff"),
+        ("amoled", "Amoled Black", "#ff6b4a"),
     ],
     "bg": [("plain", "Plain", None), ("dots", "Dots", None), ("gradient", "Gradient", None)],
     "card": [("soft", "Soft shadow", None), ("outline", "Outlined", None), ("flat", "Flat", None)],
@@ -34,8 +29,11 @@ OPTIONS = {
         ("blue", "Blue", "#8493aa"),
     ],
 }
-DARK_THEMES = {"midnight", "oceannight", "forestnight", "ember", "graphite", "amoled"}
-DEFAULTS = {"theme": "purple", "bg": "plain", "card": "soft", "fur": "red", "mascot_name": "Mochi"}
+DARK_THEMES = {"graphite", "midnight", "amoled"}
+# Themes that no longer exist are shown as their closest replacement
+LEGACY_THEMES = {"purple": "terracotta", "sunset": "terracotta", "rose": "terracotta", "forest": "sage",
+                 "mint": "sage", "oceannight": "midnight", "forestnight": "graphite", "ember": "graphite"}
+DEFAULTS = {"theme": "terracotta", "bg": "plain", "card": "soft", "fur": "red", "mascot_name": "Mochi"}
 
 
 def get_ui_settings():
@@ -45,8 +43,9 @@ def get_ui_settings():
     user = getattr(g, "user", None)
     if user is not None:
         for key, choices in OPTIONS.items():
-            if user[key] in [c[0] for c in choices]:
-                ui[key] = user[key]
+            value = LEGACY_THEMES.get(user[key], user[key]) if key == "theme" else user[key]
+            if value in [c[0] for c in choices]:
+                ui[key] = value
         if user["mascot_name"]:
             ui["mascot_name"] = user["mascot_name"]
     # "dark" or "light": lets the CSS style every dark theme the same shared way

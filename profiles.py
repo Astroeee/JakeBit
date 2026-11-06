@@ -20,8 +20,9 @@ WIDGETS = {
 }
 STAT_WIDGETS = {"streak", "today", "rate", "totals", "badges"}   # these need "show my scores" on
 DEFAULT_WIDGETS = "mascot,streak,today,rate,badges,habits"
-ACCENTS = {"purple": "#7c3aed", "blue": "#0284c7", "teal": "#0f766e", "green": "#15803d",
-           "gold": "#b45309", "orange": "#ea580c", "pink": "#db2777", "slate": "#475569"}
+ACCENTS = {"terracotta": "#c32f0c", "blue": "#1f5fd6", "green": "#2f7a58", "gold": "#a8661a",
+           "pink": "#d6336c", "slate": "#475569", "black": "#1c1c1e"}
+DEFAULT_ACCENT = "terracotta"       # older saved accents that no longer exist show as this
 BANNERS = {"mountain": "Mountains", "park": "Flower park", "forest": "Moonlit forest", "none": "Plain colour"}
 # (key, symbol, name, how to earn it, stat used, amount needed)
 BADGES = [
@@ -110,7 +111,7 @@ def build_profile(db, user, viewer_id, today=None):
     return {
         "id": user["id"], "username": user["username"],
         "name": user["display_name"] or user["username"], "bio": user["bio"],
-        "accent": ACCENTS.get(user["profile_accent"], ACCENTS["purple"]),
+        "accent": ACCENTS.get(user["profile_accent"], ACCENTS[DEFAULT_ACCENT]),
         "banner": banner, "banner_value": banner_value, "widgets": widgets,
         "since": user["created_at"][:10], "fur": user["fur"], "mascot_name": user["mascot_name"],
         "mood": "cheer" if stats and stats["today_total"] and stats["today_done"] >= stats["today_total"] else "happy",
@@ -156,4 +157,5 @@ def edit():
     on = parse_widgets(user["profile_widgets"])
     order = on + [k for k in WIDGETS if k not in on]       # shown ones first, in their order
     rows = [{"key": k, "title": WIDGETS[k][0], "hint": WIDGETS[k][1], "on": k in on} for k in order]
-    return render_template("profile_edit.html", user=user, widgets=rows, accents=ACCENTS, banners=BANNERS)
+    accent = user["profile_accent"] if user["profile_accent"] in ACCENTS else DEFAULT_ACCENT
+    return render_template("profile_edit.html", user=user, widgets=rows, accents=ACCENTS, banners=BANNERS, accent=accent)
