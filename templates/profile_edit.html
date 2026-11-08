@@ -17,7 +17,7 @@
     <label>Accent colour</label>
     <div class="swatches">
       {% for key, hex in accents.items() %}
-        <label class="swatch" title="{{ key|title }}">
+        <label class="swatch" title="{{ 'Match my theme' if key == 'theme' else key|title }}">
           <input type="radio" name="accent" value="{{ key }}" {{ 'checked' if key == accent }}>
           <span style="--c: {{ hex }}"></span>
         </label>

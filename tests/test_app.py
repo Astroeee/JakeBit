@@ -67,7 +67,7 @@ def befriend(app, requester, addressee, addressee_name):
 
 
 def edit_profile(client, **extra):
-    data = {"display_name": "", "bio": "", "accent": "terracotta", "banner": "mountain", "searchable": "on"}
+    data = {"display_name": "", "bio": "", "accent": "theme", "banner": "mountain", "searchable": "on"}
     data.update(extra)
     return client.post("/profile/edit", data=data)
 
@@ -860,7 +860,7 @@ def test_profile_ignores_invalid_choices_and_limits_length(app, make_user):
                  widget=["hack", "habits", "habits"])
     row = query(app, f"SELECT {PROFILE_COLS} FROM users")[0]
     assert len(row["display_name"]) == 30 and len(row["bio"]) == 160
-    assert row["profile_accent"] == "terracotta" and row["profile_banner"] == "mountain"
+    assert row["profile_accent"] == "theme" and row["profile_banner"] == "mountain"
     assert row["profile_widgets"] == "habits"
 
 
@@ -1094,3 +1094,12 @@ def test_habit_form_shows_frequency_tiles(app, make_user):
     alice = make_user("alice")
     page = alice.get("/habits").data
     assert b'class="freq-tile"' in page and b"data-weekly-target" in page and b"data-custom-days" in page
+
+
+def test_profile_colours_follow_the_theme_unless_an_accent_is_chosen(app, make_user):
+    alice = make_user("alice")
+    assert b"--accent: var(--purple)" in alice.get("/profile").data           # the theme's colour
+    edit_profile(alice, accent="blue")
+    assert b"--accent: #1f5fd6" in alice.get("/profile").data                 # a fixed accent
+    edit_profile(alice, accent="theme")
+    assert b"--accent: var(--purple)" in alice.get("/profile").data

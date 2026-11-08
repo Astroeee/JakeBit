@@ -729,3 +729,6 @@ button.sq:hover { outline: 2px solid var(--purple); outline-offset: 1px; }
 @media (max-width: 700px) {
   .emoji-grid { position: fixed; left: 6vw; right: 6vw; top: auto; bottom: 5.5rem; width: auto; max-height: 55vh; overflow-y: auto; }
 }
+
+/* Profile: the daily dots use the profile colour too */
+.profile .dot.on { background: var(--accent); }

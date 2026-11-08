@@ -25,7 +25,7 @@ CREATE TABLE users (
     avatar           TEXT,  -- random tag that changes with each new picture (NULL = no picture)
     display_name     TEXT,                                   -- optional name shown beside @username
     bio              TEXT NOT NULL DEFAULT '',               -- short "about me" (max 160 characters)
-    profile_accent   TEXT NOT NULL DEFAULT 'terracotta',         -- accent colour of the profile page
+    profile_accent   TEXT NOT NULL DEFAULT 'theme',         -- accent colour of the profile page
     profile_banner   TEXT NOT NULL DEFAULT 'mountain',       -- pixel scene shown at the top
     profile_widgets  TEXT NOT NULL DEFAULT 'mascot,streak,today,rate,badges,habits',  -- shown widgets, in order
     searchable       INTEGER NOT NULL DEFAULT 1,             -- 1 = can be found in friend search

@@ -20,9 +20,9 @@ WIDGETS = {
 }
 STAT_WIDGETS = {"streak", "today", "rate", "totals", "badges"}   # these need "show my scores" on
 DEFAULT_WIDGETS = "mascot,streak,today,rate,badges,habits"
-ACCENTS = {"terracotta": "#c32f0c", "blue": "#1f5fd6", "green": "#2f7a58", "gold": "#a8661a",
+ACCENTS = {"theme": "var(--purple)", "terracotta": "#c32f0c", "blue": "#1f5fd6", "green": "#2f7a58", "gold": "#a8661a",
            "pink": "#d6336c", "slate": "#475569", "black": "#1c1c1e"}
-DEFAULT_ACCENT = "terracotta"       # older saved accents that no longer exist show as this
+DEFAULT_ACCENT = "theme"            # follow the theme colour; older accents that no longer exist show as this
 BANNERS = {"mountain": "Mountains", "park": "Flower park", "forest": "Moonlit forest", "none": "Plain colour"}
 # (key, symbol, name, how to earn it, stat used, amount needed)
 BADGES = [
