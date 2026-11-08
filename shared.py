@@ -3,8 +3,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from auth import login_required
 from db import get_db
 from friends import are_friends
-from habits import validate_habit_form, CATEGORIES, FREQUENCIES
-from tracking import compute_streaks, get_done_dates
+from habits import (CATEGORIES, EMOJIS, FREQUENCIES, parse_days, parse_icon, parse_weekly_target,
+                    validate_habit_form)
+from tracking import compute_streaks, get_done_dates, week_start
 
 bp = Blueprint("shared", __name__)
 
@@ -22,11 +23,32 @@ def my_friends(db, me):
     ).fetchall()
 
 
+def group_streaks(shared, done_sets, today):
+    """Current and longest GROUP streak: the days (or weeks) that EVERYONE got done.
+    Days habits: intersect everybody's completion dates, then run the normal streak logic.
+    Weekly habits: a week counts only if every member reached the weekly goal."""
+    if not done_sets:
+        return 0, 0
+    frequency, target, mask = shared["frequency"], shared["weekly_target"], shared["days_mask"]
+    if frequency == "weekly":
+        weeks_met = None
+        for done in done_sets:
+            counts = {}
+            for d in done:
+                counts[week_start(d)] = counts.get(week_start(d), 0) + 1
+            met = {w for w, n in counts.items() if n >= target}
+            weeks_met = met if weeks_met is None else weeks_met & met
+        # Stand-in dates (one goal's worth per qualifying week) let the normal weekly logic count the weeks
+        stand_ins = {w + timedelta(days=i) for w in weeks_met for i in range(target)}
+        return compute_streaks("weekly", stand_ins, today, target)
+    return compute_streaks(frequency, set.intersection(*done_sets), today, 1, mask)
+
+
 def get_shared_or_404(db, shared_id, user_id):
     """Load a shared habit, but ONLY if user_id has joined it.
     Everyone else gets the same 404, so outsiders can't tell whether a group exists."""
     shared = db.execute(
-        "SELECT id, name, category, frequency, creator_id FROM shared_habits WHERE id = ?",
+        "SELECT id, name, category, frequency, weekly_target, days_mask, creator_id FROM shared_habits WHERE id = ?",
         (shared_id,),
     ).fetchone()
     member = db.execute(
@@ -38,13 +60,15 @@ def get_shared_or_404(db, shared_id, user_id):
     return shared
 
 
-def join_habit(db, shared, user_id):
+def join_habit(db, shared, user_id, icon=None):
     """Give a user their own personal habit row linked to the shared habit.
     Their check-offs go in the normal habit_completions table, so the dashboard,
     calendar and statistics all work without any changes."""
     db.execute(
-        "INSERT INTO habits (user_id, name, category, frequency, shared_id) VALUES (?, ?, ?, ?, ?)",
-        (user_id, shared["name"], shared["category"], shared["frequency"], shared["id"]),
+        "INSERT INTO habits (user_id, name, category, frequency, weekly_target, days_mask, shared_id, icon) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (user_id, shared["name"], shared["category"], shared["frequency"], shared["weekly_target"],
+         shared["days_mask"], shared["id"], icon),
     )
 
 
@@ -72,7 +96,7 @@ def index():
     me = g.user["id"]
 
     invites = db.execute(
-        "SELECT s.id, s.name, s.frequency, u.username AS invited_by_name "
+        "SELECT s.id, s.name, s.frequency, s.weekly_target, s.days_mask, u.username AS invited_by_name "
         "FROM shared_members m "
         "JOIN shared_habits s ON s.id = m.shared_id "
         "JOIN users u ON u.id = m.invited_by "
@@ -81,7 +105,7 @@ def index():
     ).fetchall()
 
     mine = db.execute(
-        "SELECT s.id, s.name, s.category, s.frequency, "
+        "SELECT s.id, s.name, s.category, s.frequency, s.weekly_target, s.days_mask, "
         "(SELECT COUNT(*) FROM shared_members x WHERE x.shared_id = s.id AND x.status = 'joined') AS member_count "
         "FROM shared_members m JOIN shared_habits s ON s.id = m.shared_id "
         "WHERE m.user_id = ? AND m.status = 'joined' ORDER BY s.created_at DESC",
@@ -90,8 +114,7 @@ def index():
 
     return render_template(
         "shared.html", invites=invites, mine=mine, friends=my_friends(db, me),
-        categories=CATEGORIES, frequencies=[f for f in FREQUENCIES if f not in ("weekly", "custom")],
-        max_invites=MAX_MEMBERS - 1,
+        categories=CATEGORIES, frequencies=FREQUENCIES, emojis=EMOJIS, max_invites=MAX_MEMBERS - 1,
     )
 
 
@@ -103,8 +126,11 @@ def create():
 
     # Same validation rules as a normal habit
     error, name, category, frequency = validate_habit_form(request.form)
-    if error is None and frequency in ("weekly", "custom"):
-        error = "Shared habits can be daily or weekdays for now."
+    target, mask = 1, 127
+    if error is None:
+        error, target = parse_weekly_target(request.form, frequency)
+    if error is None:
+        error, mask = parse_days(request.form, frequency)
     invitees = set()
     if error is None:
         invitees, error = clean_invitees(db, me, request.form.getlist("invite"), MAX_MEMBERS - 1)
@@ -114,18 +140,20 @@ def create():
 
     # Nothing is saved until db.commit(), so if anything fails the whole group is discarded
     cur = db.execute(
-        "INSERT INTO shared_habits (name, category, frequency, creator_id) VALUES (?, ?, ?, ?) RETURNING id",
-        (name, category, frequency, me),
+        "INSERT INTO shared_habits (name, category, frequency, weekly_target, days_mask, creator_id) "
+        "VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+        (name, category, frequency, target, mask, me),
     )
     shared_id = cur.fetchone()["id"]
-    shared = {"id": shared_id, "name": name, "category": category, "frequency": frequency}
+    shared = {"id": shared_id, "name": name, "category": category, "frequency": frequency,
+              "weekly_target": target, "days_mask": mask}
 
     # The creator joins immediately; everyone else is invited
     db.execute(
         "INSERT INTO shared_members (shared_id, user_id, status, invited_by) VALUES (?, ?, 'joined', ?)",
         (shared_id, me, me),
     )
-    join_habit(db, shared, me)
+    join_habit(db, shared, me, parse_icon(request.form))      # the creator can pick their own logo
     for uid in invitees:
         db.execute(
             "INSERT INTO shared_members (shared_id, user_id, status, invited_by) VALUES (?, ?, 'invited', ?)",
@@ -142,7 +170,7 @@ def accept(shared_id):
     db = get_db()
     me = g.user["id"]
     shared = db.execute(
-        "SELECT id, name, category, frequency FROM shared_habits WHERE id = ?", (shared_id,)
+        "SELECT id, name, category, frequency, weekly_target, days_mask FROM shared_habits WHERE id = ?", (shared_id,)
     ).fetchone()
     if shared is None:
         abort(404)
@@ -192,6 +220,8 @@ def detail(shared_id):
 
     members, pending, done_sets = [], [], []
     my_habit_id, my_done_today = None, False
+    this_week = week_start(today)
+    weekly = shared["frequency"] == "weekly"
     for r in rows:
         if r["status"] != "joined":
             pending.append({"user_id": r["user_id"], "username": r["username"]})
@@ -204,22 +234,22 @@ def detail(shared_id):
         done = get_done_dates(db, habit["id"]) if habit else set()
         done_sets.append(done)
 
-        current, longest = compute_streaks(shared["frequency"], done, today)
+        current, longest = compute_streaks(shared["frequency"], done, today, shared["weekly_target"], shared["days_mask"])
+        week_count = sum(1 for d in done if d >= this_week)
         if r["user_id"] == me and habit:
             my_habit_id, my_done_today = habit["id"], today in done
         members.append({
             "user_id": r["user_id"], "username": r["username"], "is_me": r["user_id"] == me,
             "done_today": today in done, "current": current, "longest": longest,
+            "week_count": week_count, "goal_met": week_count >= shared["weekly_target"],
             "week": [
                 {"day": today - timedelta(days=i), "done": (today - timedelta(days=i)) in done}
                 for i in range(6, -1, -1)
             ],
         })
 
-    # GROUP STREAK: a day only counts if EVERY member completed it, so we intersect
-    # everyone's completion dates and run the normal streak logic on the result.
-    group_done = set.intersection(*done_sets) if done_sets else set()
-    group_current, group_longest = compute_streaks(shared["frequency"], group_done, today)
+    # GROUP STREAK: a day (or, for weekly habits, a week) only counts if EVERYONE got it done
+    group_current, group_longest = group_streaks(shared, done_sets, today)
 
     # Only the creator can invite more people, and only from their own friends
     is_creator = shared["creator_id"] == me
@@ -230,7 +260,8 @@ def detail(shared_id):
 
     return render_template(
         "shared_detail.html", shared=shared, members=members, pending=pending,
-        done_count=sum(1 for m in members if m["done_today"]),
+        weekly=weekly, unit_word="weeks" if weekly else "days",
+        done_count=sum(1 for m in members if (m["goal_met"] if weekly else m["done_today"])),
         group_current=group_current, group_longest=group_longest,
         my_habit_id=my_habit_id, my_done_today=my_done_today, today=today,
         is_creator=is_creator, invitable=invitable,

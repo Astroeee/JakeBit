@@ -44,6 +44,8 @@ CREATE TABLE shared_habits (
     name       TEXT NOT NULL,
     category   TEXT,
     frequency  TEXT NOT NULL DEFAULT 'daily',
+    weekly_target INTEGER NOT NULL DEFAULT 1,      -- times per week when frequency = 'weekly'
+    days_mask  INTEGER NOT NULL DEFAULT 127,       -- which weekdays (Mon = bit 0) when frequency = 'custom'
     creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

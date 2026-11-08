@@ -5,13 +5,13 @@
   <a href="{{ url_for('shared.index') }}" class="muted">← Shared habits</a>
   <header class="page-header">
     <h1>{{ shared['name'] }}</h1>
-    <p class="muted">{{ shared['category'] }} · {{ shared['frequency']|capitalize }}</p>
+    <p class="muted">{{ shared['category'] }} · {{ schedule_label(shared['frequency'], shared['weekly_target'], shared['days_mask']) }}</p>
   </header>
 
   <section class="stats-row">
-    <div class="stat-card purple"><span class="stat-label">Done today</span><span class="stat-value">{{ done_count }}/{{ members|length }}</span><span class="stat-sub">members</span></div>
+    <div class="stat-card purple"><span class="stat-label">{{ 'Goal met this week' if weekly else 'Done today' }}</span><span class="stat-value">{{ done_count }}/{{ members|length }}</span><span class="stat-sub">members</span></div>
     <div class="stat-card orange"><span class="stat-label">Group streak</span><span class="stat-value">🔥 {{ group_current }}</span><span class="stat-sub">everyone did it</span></div>
-    <div class="stat-card teal"><span class="stat-label">Longest group streak</span><span class="stat-value">{{ group_longest }}</span><span class="stat-sub">days</span></div>
+    <div class="stat-card teal"><span class="stat-label">Longest group streak</span><span class="stat-value">{{ group_longest }}</span><span class="stat-sub">{{ unit_word }}</span></div>
   </section>
 
   {% if my_habit_id %}
@@ -31,10 +31,10 @@
       <article class="habit-card {{ 'is-done' if m.done_today }}">
         <div class="habit-top">
           <span class="person">{{ avatar(m.user_id, m.username, 32) }}<strong>{{ m.username }}{% if m.is_me %} (you){% endif %}</strong></span>
-          <span class="streak">🔥 {{ m.current }}</span>
+          <span class="streak">🔥 {{ m.current }}{{ 'w' if weekly }}</span>
         </div>
         <p class="muted small">
-          {% if m.done_today %}✓ Done today{% else %}Not yet today{% endif %} · Longest streak: {{ m.longest }}
+          {% if weekly %}This week: {{ m.week_count }} of {{ shared['weekly_target'] }}{% if m.goal_met %} ✓{% endif %}{% elif m.done_today %}✓ Done today{% else %}Not yet today{% endif %} · Longest streak: {{ m.longest }}{{ 'w' if weekly }}
         </p>
         <div class="week">
           {% for d in m.week %}

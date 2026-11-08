@@ -139,19 +139,17 @@ def edit(habit_id):
 
         error, name, category, frequency = validate_habit_form(request.form)
         target, mask = 1, 127
-        if error is None and shared is not None and frequency not in ("daily", "weekdays"):
-            error = "Shared habits can only be daily or weekdays."
-        if error is None and shared is None:
+        if error is None:
             error, target = parse_weekly_target(request.form, frequency)
-        if error is None and shared is None:
+        if error is None:
             error, mask = parse_days(request.form, frequency)
         if error:
             flash(error)
         elif shared is not None:
-            db.execute("UPDATE shared_habits SET name = ?, category = ?, frequency = ? WHERE id = ?",
-                       (name, category, frequency, shared["id"]))
-            db.execute("UPDATE habits SET name = ?, category = ?, frequency = ?, weekly_target = 1, days_mask = 127 "
-                       "WHERE shared_id = ?", (name, category, frequency, shared["id"]))
+            db.execute("UPDATE shared_habits SET name = ?, category = ?, frequency = ?, weekly_target = ?, days_mask = ? "
+                       "WHERE id = ?", (name, category, frequency, target, mask, shared["id"]))
+            db.execute("UPDATE habits SET name = ?, category = ?, frequency = ?, weekly_target = ?, days_mask = ? "
+                       "WHERE shared_id = ?", (name, category, frequency, target, mask, shared["id"]))
             db.execute("UPDATE habits SET icon = ? WHERE id = ? AND user_id = ?",
                        (parse_icon(request.form), habit_id, me))
             db.commit()
@@ -169,7 +167,7 @@ def edit(habit_id):
 
     return render_template(
         "edit_habit.html", habit=habit, categories=CATEGORIES, emojis=EMOJIS, shared=shared,
-        frequencies=["daily", "weekdays"] if shared else FREQUENCIES, can_edit_core=can_edit_core,
+        frequencies=FREQUENCIES, can_edit_core=can_edit_core,
         selected_days=mask_to_days(habit["days_mask"]),
     )
 

@@ -663,12 +663,13 @@ def test_weekly_goal_is_validated(app, make_user):
     assert query(app, "SELECT weekly_target FROM habits")[0]["weekly_target"] == 1   # ignored for daily habits
 
 
-def test_shared_habits_cannot_be_weekly_yet(app, make_user):
+def test_shared_weekly_habits_need_a_valid_weekly_goal(app, make_user):
     alice = make_user("alice")
-    response = alice.post("/shared/create", data={"name": "Gym", "category": "Fitness", "frequency": "weekly"},
-                          follow_redirects=True)
-    assert b"daily or weekdays" in response.data
+    for bad in ("0", "9", "lots"):
+        alice.post("/shared/create", data={"name": "Gym", "category": "Fitness", "frequency": "weekly", "weekly_target": bad})
     assert query(app, "SELECT COUNT(*) AS n FROM shared_habits")[0]["n"] == 0
+    alice.post("/shared/create", data={"name": "Gym", "category": "Fitness", "frequency": "weekly", "weekly_target": "4"})
+    assert query(app, "SELECT weekly_target FROM shared_habits")[0]["weekly_target"] == 4
 
 
 def test_the_pixel_mascot_is_on_the_dashboard(make_user):
@@ -793,11 +794,10 @@ def test_days_off_are_rest_days_on_the_dashboard(app, make_user):
     assert b"Inactive on" not in alice.get("/").data
 
 
-def test_shared_habits_cannot_use_custom_days(app, make_user):
+def test_shared_custom_habits_need_at_least_one_day(app, make_user):
     alice = make_user("alice")
-    response = alice.post("/shared/create", data={"name": "Gym", "category": "Fitness", "frequency": "custom"},
-                          follow_redirects=True)
-    assert b"daily or weekdays" in response.data
+    alice.post("/shared/create", data={"name": "Gym", "category": "Fitness", "frequency": "custom"})
+    assert query(app, "SELECT COUNT(*) AS n FROM shared_habits")[0]["n"] == 0
 
 
 def test_dashboard_shows_the_pixel_nature_scenes(make_user):
@@ -1038,12 +1038,56 @@ def test_other_members_can_only_change_their_own_logo(app, make_user):
     assert (own_habit(app, "bob")["name"], own_habit(app, "bob")["icon"]) == ("Morning run", "🎸")
 
 
-def test_group_habits_cannot_become_weekly_or_custom(app, make_user):
+def test_group_habits_can_become_weekly_or_custom_for_everyone(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    joined_group(app, alice, bob)
+    alice_id = own_habit(app, "alice")["id"]
+    form = {"name": "Morning run", "category": "Fitness"}
+    alice.post(f"/habits/{alice_id}/edit", data={**form, "frequency": "weekly", "weekly_target": "3"})
+    shared = query(app, "SELECT frequency, weekly_target FROM shared_habits")[0]
+    assert (shared["frequency"], shared["weekly_target"]) == ("weekly", 3)
+    bobs = query(app, "SELECT frequency, weekly_target FROM habits WHERE user_id = ?", (user_id(app, "bob"),))[0]
+    assert (bobs["frequency"], bobs["weekly_target"]) == ("weekly", 3)
+    alice.post(f"/habits/{alice_id}/edit", data={**form, "frequency": "custom", "days": ["0", "2", "4"]})
+    assert query(app, "SELECT frequency, days_mask FROM shared_habits")[0]["days_mask"] == 0b10101
+    assert query(app, "SELECT days_mask FROM habits WHERE user_id = ?", (user_id(app, "bob"),))[0]["days_mask"] == 0b10101
+
+
+def test_group_schedule_must_be_valid(app, make_user):
     alice, bob = make_user("alice"), make_user("bob")
     joined_group(app, alice, bob)
     alice.post(f"/habits/{own_habit(app, 'alice')['id']}/edit",
-               data={"name": "Morning run", "category": "Fitness", "frequency": "custom", "days": ["0"]})
+               data={"name": "Morning run", "category": "Fitness", "frequency": "custom"})   # no days chosen
     assert query(app, "SELECT frequency FROM shared_habits")[0]["frequency"] == "daily"
+
+
+def test_new_group_habits_can_start_weekly_or_custom_and_new_members_get_the_schedule(app, make_user):
+    alice, bob = make_user("alice"), make_user("bob")
+    befriend(app, alice, bob, "bob")
+    alice.post("/shared/create", data={"name": "Gym", "category": "Fitness", "frequency": "weekly",
+                                       "weekly_target": "2", "invite": [str(user_id(app, "bob"))]})
+    sid = query(app, "SELECT id FROM shared_habits")[0]["id"]
+    bob.post(f"/shared/{sid}/accept")
+    for who in ("alice", "bob"):
+        row = query(app, "SELECT frequency, weekly_target FROM habits WHERE user_id = ?", (user_id(app, who),))[0]
+        assert (row["frequency"], row["weekly_target"]) == ("weekly", 2)
+    assert b"This week: 0 of 2" in alice.get(f"/shared/{sid}").data
+    alice.post("/shared/create", data={"name": "Yoga", "category": "Fitness", "frequency": "custom", "days": ["1", "3"]})
+    assert query(app, "SELECT days_mask FROM shared_habits WHERE name = 'Yoga'")[0]["days_mask"] == 0b1010
+
+
+def test_group_streak_counts_weeks_only_when_everyone_reached_the_goal():
+    from shared import group_streaks
+    monday = date(2026, 10, 12)                       # a Monday
+    today = monday + timedelta(days=3)
+    two = lambda week: {monday + timedelta(days=7 * week), monday + timedelta(days=7 * week + 1)}
+    shared = {"frequency": "weekly", "weekly_target": 2, "days_mask": 127}
+    both = [two(-2) | two(-1), two(-2) | two(-1)]
+    assert group_streaks(shared, both, today)[0] == 2
+    one_slacker = [two(-2) | two(-1), two(-2)]                    # second member missed last week
+    current, longest = group_streaks(shared, one_slacker, today)
+    assert current == 0 and longest == 1
+    assert group_streaks(shared, [], today) == (0, 0)
 
 
 def test_habit_form_shows_frequency_tiles(app, make_user):

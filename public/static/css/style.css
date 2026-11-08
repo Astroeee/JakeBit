@@ -652,6 +652,9 @@ button.sq:hover { outline: 2px solid var(--purple); outline-offset: 1px; }
 .weekly-target { display: block; margin-top: .8rem; }
 .weekly-target select { width: auto; }
 .day-picker { display: flex; gap: .35rem; border: 0; padding: 0; margin: .8rem 0 0; flex-wrap: wrap; }
+.habit-fields { display: flex; flex-direction: column; flex-wrap: nowrap; }
+.habit-fields > .field-label:first-child { margin-top: 0; }
+.habit-fields .btn-wide { margin-top: 1.5rem; }
 .field-row { display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: flex-start; }
 .field-col { flex: 1; min-width: 190px; display: block; }
 .field-col select { width: 100%; }
