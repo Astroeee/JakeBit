@@ -1103,3 +1103,39 @@ def test_profile_colours_follow_the_theme_unless_an_accent_is_chosen(app, make_u
     assert b"--accent: #1f5fd6" in alice.get("/profile").data                 # a fixed accent
     edit_profile(alice, accent="theme")
     assert b"--accent: var(--purple)" in alice.get("/profile").data
+
+
+# ------------------------------------------------------------------------ installable app
+def test_manifest_makes_the_site_installable(app):
+    response = app.test_client().get("/manifest.webmanifest")
+    assert response.status_code == 200 and response.mimetype == "application/manifest+json"
+    data = response.get_json()
+    assert (data["name"], data["display"], data["start_url"]) == ("Jakebit", "standalone", "/")
+    assert {"192x192", "512x512"} <= {i["sizes"] for i in data["icons"]}
+    assert any(i["purpose"] == "maskable" for i in data["icons"])
+
+
+def test_every_icon_in_the_manifest_exists_with_the_right_size(app):
+    client = app.test_client()
+    for icon in client.get("/manifest.webmanifest").get_json()["icons"]:
+        response = client.get(icon["src"])
+        assert response.status_code == 200
+        with Image.open(io.BytesIO(response.data)) as image:
+            assert f"{image.width}x{image.height}" == icon["sizes"]
+
+
+def test_service_worker_is_served_from_the_root_and_never_stored(app):
+    response = app.test_client().get("/sw.js")
+    assert response.status_code == 200 and "javascript" in response.mimetype
+    assert response.headers["Service-Worker-Allowed"] == "/" and response.headers["Cache-Control"] == "no-cache"
+    assert b"/offline" in response.data and b'request.method !== "GET"' in response.data
+
+
+def test_offline_page_works_without_logging_in(app):
+    page = app.test_client().get("/offline")
+    assert page.status_code == 200 and b"offline" in page.data
+
+
+def test_pages_link_the_manifest_and_app_icons(app, make_user):
+    page = make_user("alice").get("/").data
+    assert b'rel="manifest"' in page and b"apple-touch-icon" in page and b"data-install" in page

@@ -91,6 +91,16 @@
     <button type="submit" class="check-btn save-btn">Save settings</button>
   </form>
 
+    <section class="panel set-section" id="install">
+    <h2>Install the app</h2>
+    <p class="muted">Add Jakebit to your home screen: it opens full-screen like a normal app, with its own icon.</p>
+    <button type="button" class="btn-primary" data-install hidden>Install Jakebit</button>
+    <p class="muted small" data-install-help>
+      <strong>iPhone / iPad:</strong> open this site in Safari, tap the Share button, then <em>Add to Home Screen</em>.<br>
+      <strong>Android / computer (Chrome, Edge):</strong> use the <em>Install app</em> button here or in the sidebar, or the install icon in the address bar.
+    </p>
+  </section>
+
     <section class="panel set-section">
     <h2>Password recovery</h2>
     <p class="muted small">A recovery code lets you set a new password if you forget it. {% if g.user['has_recovery'] %}You have one; making a new code replaces it.{% else %}You don't have one yet.{% endif %}</p>

@@ -79,3 +79,31 @@ document.addEventListener("change", (event) => {
   picker.querySelector("[data-emoji-preview]").textContent = radio.value || "✨";
   picker.open = false;
 });
+
+// App mode (PWA): offline support, the install button, and a status-bar colour that matches the theme
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+}
+let installPrompt = null;
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  installPrompt = event;
+  document.querySelectorAll("[data-install]").forEach((el) => { el.hidden = false; });
+  document.querySelectorAll("[data-install-help]").forEach((el) => { el.hidden = true; });
+});
+document.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-install]") || !installPrompt) return;
+  installPrompt.prompt();
+  installPrompt.userChoice.finally(() => {
+    installPrompt = null;
+    document.querySelectorAll("[data-install]").forEach((el) => { el.hidden = true; });
+  });
+});
+window.addEventListener("appinstalled", () => {
+  document.querySelectorAll("[data-install]").forEach((el) => { el.hidden = true; });
+});
+document.addEventListener("DOMContentLoaded", () => {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const colour = getComputedStyle(document.body).getPropertyValue("--bg").trim();
+  if (meta && colour) meta.setAttribute("content", colour);
+});

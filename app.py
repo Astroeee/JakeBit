@@ -52,6 +52,7 @@ def create_app(test_config=None):
     from tracking import describe_schedule
     from recovery import bp as recovery_bp
     from profiles import bp as profiles_bp
+    from pwa import bp as pwa_bp
     from pixelart import render_mascot
     from pixelscenes import render_scene
     app.register_blueprint(recovery_bp)
@@ -64,6 +65,7 @@ def create_app(test_config=None):
     app.register_blueprint(shared_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(profiles_bp)
+    app.register_blueprint(pwa_bp)
 
     @app.context_processor
     def inject_ui():
